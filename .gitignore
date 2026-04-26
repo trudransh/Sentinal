@@ -1,0 +1,16 @@
+node_modules/
+.pnpm-store/
+.DS_Store
+.env
+.env.local
+*.tsbuildinfo
+dist/
+.next/
+out/
+target/
+.anchor/
+test-ledger/
+*.log
+.idea/
+.vscode/
+.data/

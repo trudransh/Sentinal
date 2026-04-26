@@ -1,0 +1,19 @@
+[toolchain]
+anchor_version = "0.32.1"
+
+[features]
+seeds = false
+skip-lint = false
+
+[programs.devnet]
+sentinel_registry = "Sentinel11111111111111111111111111111111111"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/sentinel-dev.json"
+
+[scripts]
+test = "pnpm vitest run --dir tests"
