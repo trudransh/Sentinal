@@ -6,13 +6,16 @@ seeds = false
 skip-lint = false
 
 [programs.devnet]
-sentinel_registry = "Sentinel11111111111111111111111111111111111"
+sentinel_registry = "2fQyCvg9MgiribMmXbXwn4oq587Kqo3cNGCh4x7BRVCk"
+
+[programs.localnet]
+sentinel_registry = "2fQyCvg9MgiribMmXbXwn4oq587Kqo3cNGCh4x7BRVCk"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "~/.config/solana/sentinel-dev.json"
 
 [scripts]

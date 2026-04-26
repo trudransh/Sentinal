@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("Sentinel11111111111111111111111111111111111");
+declare_id!("2fQyCvg9MgiribMmXbXwn4oq587Kqo3cNGCh4x7BRVCk");
 
 #[program]
 pub mod sentinel_registry {
