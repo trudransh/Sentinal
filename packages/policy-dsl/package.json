@@ -1,0 +1,30 @@
+{
+  "name": "@sentinel/policy-dsl",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./schema": "./dist/schema.js",
+    "./engine": "./dist/engine.js",
+    "./canonicalize": "./dist/canonicalize.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "yaml": "^2.5.0",
+    "zod": "^3.23.0",
+    "json-stable-stringify": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/json-stable-stringify": "^1.0.36",
+    "@types/node": "^20.0.0",
+    "vitest": "^1.6.0",
+    "typescript": "^5.4.0"
+  }
+}

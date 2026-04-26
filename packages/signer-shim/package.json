@@ -1,0 +1,32 @@
+{
+  "name": "@sentinel/signer-shim",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.0",
+    "@pythnetwork/hermes-client": "^1.0.0",
+    "@sentinel/policy-dsl": "workspace:*",
+    "@solana/spl-token": "^0.4.0",
+    "@solana/web3.js": "^1.95.0",
+    "better-sqlite3": "^11.5.0",
+    "pino": "^9.0.0",
+    "yaml": "^2.5.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^20.0.0",
+    "vitest": "^1.6.0",
+    "typescript": "^5.4.0"
+  }
+}

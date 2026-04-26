@@ -1,0 +1,5 @@
+version: 1
+agent: AGENTPubKEy11111111111111111111111111111111
+caps:
+  - token: SOL
+    max_per_day: 0.5

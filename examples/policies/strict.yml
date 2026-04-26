@@ -1,0 +1,18 @@
+version: 1
+agent: AGENTPubKEy11111111111111111111111111111111
+caps:
+  - token: SOL
+    max_per_day: 0.0001
+  - token: USDC
+    max_per_day: 5
+allowlist:
+  destinations:
+    - Treasury111111111111111111111111111111111111
+programs:
+  allow:
+    - TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA
+    - 11111111111111111111111111111111
+escalate_above:
+  usd_value: 1
+rate_limit:
+  max_tx_per_minute: 2

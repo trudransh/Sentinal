@@ -1,0 +1,30 @@
+{
+  "name": "@sentinel/zerion-bridge",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./sentinel.mjs": "./src/sentinel.mjs"
+  },
+  "bin": {
+    "sentinel-bridge": "./dist/install.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@sentinel/policy-dsl": "workspace:*",
+    "@sentinel/signer-shim": "workspace:*",
+    "@solana/web3.js": "^1.95.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "vitest": "^1.6.0",
+    "typescript": "^5.4.0"
+  }
+}

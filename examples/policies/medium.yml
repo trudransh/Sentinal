@@ -1,0 +1,12 @@
+version: 1
+agent: AGENTPubKEy11111111111111111111111111111111
+caps:
+  - token: USDC
+    max_per_tx: 10
+    max_per_day: 50
+allowlist:
+  destinations:
+    - DexRouter11111111111111111111111111111111111
+    - DexRouter22222222222222222222222222222222222
+rate_limit:
+  max_tx_per_minute: 6
