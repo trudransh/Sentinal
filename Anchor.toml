@@ -16,4 +16,4 @@ cluster = "devnet"
 wallet = "~/.config/solana/sentinel-dev.json"
 
 [scripts]
-test = "pnpm vitest run --dir tests"
+test = "pnpm exec ts-mocha -p ./tsconfig.tests.json -t 1000000 tests/**/*.ts"
