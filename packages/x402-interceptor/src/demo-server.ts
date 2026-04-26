@@ -3,9 +3,9 @@ import { x402Protect } from "./server-middleware.js";
 
 const PORT = Number(process.env.DEMO_PORT ?? 4002);
 const RECEIVER =
-  process.env.X402_RECEIVING_ADDRESS ?? "Treasury111111111111111111111111111111111111";
+  process.env.X402_RECEIVING_ADDRESS ?? "DpfxWR9oBJeDL8vf9nHVGUK4BKDcQfGUmo5Tpah9joMN";
 const BLOCKED_RECEIVER =
-  process.env.X402_BLOCKED_ADDRESS ?? "Bl0cked111111111111111111111111111111111111";
+  process.env.X402_BLOCKED_ADDRESS ?? "2NGLZrjxK1FN8HkEawQuGap8MyMbnxE686BBDvv684DD";
 
 const app = express();
 app.use(express.json());

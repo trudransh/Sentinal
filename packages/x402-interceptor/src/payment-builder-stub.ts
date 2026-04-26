@@ -51,7 +51,7 @@ export function createStubPaymentBuilder(opts: {
         const decimals = 6;
         const raw = BigInt(Math.round(req.amount * 10 ** decimals));
         const sourceAta = Keypair.generate().publicKey;
-        const destAta = Keypair.generate().publicKey;
+        const destAta = payTo;
         tx.add(
           createTransferCheckedInstruction(
             sourceAta,

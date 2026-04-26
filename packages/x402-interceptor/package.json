@@ -18,9 +18,11 @@
   "dependencies": {
     "@sentinel/policy-dsl": "workspace:*",
     "@sentinel/signer-shim": "workspace:*",
+    "@solana/spl-token": "^0.4.0",
     "@solana/web3.js": "^1.95.0",
     "express": "^4.19.0",
-    "pino": "^9.0.0"
+    "pino": "^9.0.0",
+    "yaml": "^2.5.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.0",

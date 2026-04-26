@@ -19,11 +19,11 @@ import { createStubPaymentBuilder } from "./payment-builder-stub.js";
 const PROGRAM_ID = new PublicKey("2fQyCvg9MgiribMmXbXwn4oq587Kqo3cNGCh4x7BRVCk");
 const SERVER = process.env.DEMO_SERVER ?? "http://localhost:4002";
 const BLOCKED_RECEIVER =
-  process.env.X402_BLOCKED_ADDRESS ?? "Bl0cked111111111111111111111111111111111111";
+  process.env.X402_BLOCKED_ADDRESS ?? "2NGLZrjxK1FN8HkEawQuGap8MyMbnxE686BBDvv684DD";
 
 async function main(): Promise<void> {
   const agent = Keypair.generate();
-  const treasury = process.env.X402_RECEIVING_ADDRESS ?? "Treasury111111111111111111111111111111111111";
+  const treasury = process.env.X402_RECEIVING_ADDRESS ?? "DpfxWR9oBJeDL8vf9nHVGUK4BKDcQfGUmo5Tpah9joMN";
 
   const policy = {
     version: 1,
