@@ -45,7 +45,8 @@ export interface HermesLike {
 export function createHermesOracle(opts: HermesOracleOptions): PriceOracle {
   const ttlMs = opts.ttlMs ?? DEFAULT_TTL_MS;
   const now = opts.now ?? (() => Date.now());
-  const client: HermesLike = opts.client ?? new HermesClient(opts.hermesUrl, {});
+  const client: HermesLike =
+    opts.client ?? (new HermesClient(opts.hermesUrl, {}) as unknown as HermesLike);
   const cache = new Map<string, CacheEntry>();
   let usdcSanityChecked = false;
 
