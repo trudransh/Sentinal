@@ -31,6 +31,19 @@ async function main() {
   }
   console.log(`[sim] ok in ${elapsed}ms`);
 
+  const parsed = JSON.parse(text) as { balances_count?: number; balances?: unknown[] };
+  const empty = (parsed.balances_count ?? parsed.balances?.length ?? 0) === 0;
+  if (empty) {
+    console.warn("");
+    console.warn("[sim] ⚠ balances_count = 0.");
+    console.warn("[sim]   Dune SIM only indexes mainnet. Devnet wallets always come back empty.");
+    console.warn("[sim]   To verify SIM works against your key, re-run with a known-funded mainnet pubkey:");
+    console.warn("[sim]     AGENT_ADDRESS=<mainnet-pk> pnpm probe:sim");
+    console.warn("[sim]   For dashboard balance on devnet, the app falls through to Solana RPC");
+    console.warn("[sim]   (app/lib/balance.ts) so the BalanceWidget shows the real funded state.");
+    console.warn("");
+  }
+
   const out = resolve("docs/sim-response.md");
   mkdirSync(dirname(out), { recursive: true });
   const md = [
@@ -39,10 +52,14 @@ async function main() {
     `Probed: ${new Date().toISOString()}`,
     `Address: \`${address}\` · elapsed: ${elapsed}ms`,
     "",
+    empty
+      ? "> **NOTE:** `balances_count: 0`. Dune SIM only indexes mainnet — devnet wallets always come back empty. Dashboard switches to Solana RPC on devnet (see `app/lib/balance.ts`)."
+      : "",
+    "",
     "## Raw JSON",
     "",
     "```json",
-    JSON.stringify(JSON.parse(text), null, 2),
+    JSON.stringify(parsed, null, 2),
     "```",
     "",
   ].join("\n");

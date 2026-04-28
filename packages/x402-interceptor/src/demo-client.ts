@@ -25,10 +25,12 @@ async function main(): Promise<void> {
   const agent = Keypair.generate();
   const treasury = process.env.X402_RECEIVING_ADDRESS ?? "DpfxWR9oBJeDL8vf9nHVGUK4BKDcQfGUmo5Tpah9joMN";
 
-  const policy = {
+  const basePolicy = {
     version: 1,
     agent: agent.publicKey.toBase58(),
-    caps: [{ token: "USDC", max_per_tx: 1, max_per_day: 50 }],
+    // Keep /expensive (5 USDC) under per-tx cap so it routes to escalation
+    // (escalate_above.usd_value) rather than hard deny from caps.
+    caps: [{ token: "USDC", max_per_tx: 10, max_per_day: 50 }],
     allowlist: { destinations: [treasury] },
     denylist: { destinations: [BLOCKED_RECEIVER] },
     escalate_above: { usd_value: 1 },
@@ -37,12 +39,12 @@ async function main(): Promise<void> {
 
   const tmpDir = mkdtempSync(join(tmpdir(), "sentinel-demo-"));
   const policyPath = join(tmpDir, "policy.yml");
-  writeFileSync(policyPath, yamlStringify(policy), "utf8");
+  writeFileSync(policyPath, yamlStringify(basePolicy), "utf8");
 
   const onChain: OnChainPolicyRecord = {
     owner: agent.publicKey,
     agent: agent.publicKey,
-    root: Array.from(policyRoot(policy as never)),
+    root: Array.from(policyRoot(basePolicy as never)),
     version: 1,
     revoked: false,
   };
@@ -54,7 +56,7 @@ async function main(): Promise<void> {
   void onChain;
 
   const rateLimiter = createInMemoryRateLimiter(agent.publicKey.toBase58());
-  const signer = new SentinelSigner({
+  let activeSigner = new SentinelSigner({
     policyPath,
     agentKeypair: agent,
     registryProgramId: PROGRAM_ID,
@@ -62,13 +64,40 @@ async function main(): Promise<void> {
     rateLimiter,
     policyFetcher: fetcher,
   });
+  const signer = activeSigner;
+  let escalationApproved = false;
 
   const sentinelFetch = createSentinelFetch({
     signer,
     paymentBuilder: createStubPaymentBuilder({ agent }),
     onEscalate: async (ticket) => {
       console.log(`[escalate] ${ticket.reason}`);
-      return process.env.AUTO_APPROVE === "1" ? "approve" : "reject";
+      if (process.env.AUTO_APPROVE !== "1") return "reject";
+      if (!escalationApproved) {
+        // Simulate a human approval by relaxing the escalation threshold,
+        // then hot-swapping signer methods so retry passes.
+        const approvedPolicy = {
+          ...basePolicy,
+          escalate_above: { usd_value: 999_999 },
+        };
+        writeFileSync(policyPath, yamlStringify(approvedPolicy), "utf8");
+        const replacement = new SentinelSigner({
+          policyPath,
+          agentKeypair: agent,
+          registryProgramId: PROGRAM_ID,
+          oracle: stubOracle,
+          rateLimiter,
+          policyFetcher: fetcher,
+        });
+        (signer as unknown as { signTransaction: SentinelSigner["signTransaction"] }).signTransaction =
+          replacement.signTransaction.bind(replacement);
+        (
+          signer as unknown as { signAllTransactions: SentinelSigner["signAllTransactions"] }
+        ).signAllTransactions = replacement.signAllTransactions.bind(replacement);
+        activeSigner = replacement;
+        escalationApproved = true;
+      }
+      return "approve";
     },
   });
 
@@ -82,7 +111,7 @@ async function main(): Promise<void> {
     }
   }
 
-  await signer.close();
+  await activeSigner.close();
 }
 
 main().catch((err) => {

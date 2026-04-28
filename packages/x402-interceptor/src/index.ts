@@ -17,3 +17,5 @@ export type {
   EscalationHandler,
 } from "./types.js";
 export { createStubPaymentBuilder } from "./payment-builder-stub.js";
+export { createLivePaymentBuilder } from "./payment-builder-live.js";
+export type { LivePaymentBuilderOptions } from "./payment-builder-live.js";

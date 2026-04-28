@@ -12,6 +12,7 @@
     "probe:helius": "tsx scripts/probes/helius.ts",
     "probe:sim": "tsx scripts/probes/sim.ts",
     "probe:check-webhook": "tsx scripts/probes/check-webhook.ts",
+    "probe:x402-live": "tsx scripts/probes/x402-live.ts",
     "probe:restart-a2": "bash scripts/probes/restart-a2.sh",
     "probe:shutdown-a2": "bash scripts/probes/shutdown-a2.sh",
     "fire:register-policy": "tsx scripts/probes/fire-register-policy.ts"

@@ -31,7 +31,7 @@ app.get(
   x402Protect({
     receivingAddress: RECEIVER,
     pricePerCall: { token: "USDC", amount: 5 },
-    description: "expensive demo endpoint — escalates under medium policy",
+    description: "expensive demo endpoint - escalates under medium policy",
   }),
   (_req, res) => {
     res.json({ data: "premium data", price: "5 USDC" });
@@ -43,7 +43,7 @@ app.get(
   x402Protect({
     receivingAddress: BLOCKED_RECEIVER,
     pricePerCall: { token: "USDC", amount: 0.001 },
-    description: "destination on agent denylist — must be denied",
+    description: "destination on agent denylist - must be denied",
   }),
   (_req, res) => {
     res.json({ data: "should never reach here" });

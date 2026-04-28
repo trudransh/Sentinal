@@ -3,6 +3,7 @@ import LiveActivity from "./components/live-activity";
 import EscalationQueue from "./components/escalation-queue";
 import PolicyEditor from "./components/policy-editor";
 import BalanceWidget from "./components/balance-widget";
+import AgentSpendChart from "./components/agent-spend-chart";
 import WalletControls from "./components/wallet-controls";
 import EscalationApprover from "./components/escalation-approver";
 
@@ -37,6 +38,11 @@ export default function Page() {
         <Suspense fallback={<div>loading…</div>}>
           <BalanceWidget address={DEFAULT_AGENT} />
         </Suspense>
+      </section>
+
+      <section style={panel}>
+        <h2 style={panelHeader}>Agent spend (7d)</h2>
+        <AgentSpendChart address={DEFAULT_AGENT} />
       </section>
 
       <section style={panel}>
