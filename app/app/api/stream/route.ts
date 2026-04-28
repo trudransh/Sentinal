@@ -20,7 +20,7 @@ export async function GET(): Promise<Response> {
         try {
           const events = db
             .prepare(
-              `SELECT id, kind, agent, signature, payload, received_at
+              `SELECT id, kind, agent, signature, payload, received_at, decoded
                FROM policy_events
                ORDER BY received_at DESC
                LIMIT 5`,

@@ -47,14 +47,21 @@ export async function POST(req: Request): Promise<Response> {
 
   const db = getDb();
   const insert = db.prepare(
-    `INSERT INTO policy_events (kind, agent, signature, payload, received_at)
-     VALUES (?, ?, ?, ?, ?)`,
+    `INSERT INTO policy_events (kind, agent, signature, payload, received_at, decoded)
+     VALUES (?, ?, ?, ?, ?, ?)`,
   );
   const now = Date.now();
   const insertMany = db.transaction((items: HeliusEnhancedTx[]) => {
     for (const tx of items) {
-      const { kind, agent } = classifyTx(tx);
-      insert.run(kind, agent, tx.signature ?? null, JSON.stringify(tx), now);
+      const decoded = classifyTx(tx);
+      insert.run(
+        decoded.kind,
+        decoded.agent,
+        tx.signature ?? null,
+        JSON.stringify(tx),
+        now,
+        JSON.stringify(decoded),
+      );
     }
   });
   insertMany(txs);

@@ -6,11 +6,12 @@ import type { Database as DatabaseT } from "better-sqlite3";
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS policy_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  kind TEXT NOT NULL,                  -- registered | updated | revoked
+  kind TEXT NOT NULL,                  -- registered | updated | revoked | unknown
   agent TEXT NOT NULL,
   signature TEXT,
   payload TEXT NOT NULL,               -- raw JSON from Helius
-  received_at INTEGER NOT NULL
+  received_at INTEGER NOT NULL,
+  decoded TEXT                         -- C3: JSON of DecodedEvent (kind, agent, policyPda, owner, rootHex)
 );
 CREATE INDEX IF NOT EXISTS idx_events_received ON policy_events (received_at);
 CREATE INDEX IF NOT EXISTS idx_events_agent ON policy_events (agent);
@@ -27,6 +28,16 @@ CREATE TABLE IF NOT EXISTS escalations (
 CREATE INDEX IF NOT EXISTS idx_escalations_status ON escalations (status, created_at);
 `;
 
+// SQLite has no `ALTER TABLE … ADD COLUMN IF NOT EXISTS`. Migrate by introspection.
+function migrateDecodedColumn(db: DatabaseT): void {
+  const cols = db
+    .prepare(`PRAGMA table_info(policy_events)`)
+    .all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === "decoded")) {
+    db.exec(`ALTER TABLE policy_events ADD COLUMN decoded TEXT`);
+  }
+}
+
 let dbHandle: DatabaseT | null = null;
 
 export function getDb(): DatabaseT {
@@ -36,6 +47,7 @@ export function getDb(): DatabaseT {
   dbHandle = new Database(path);
   dbHandle.pragma("journal_mode = WAL");
   dbHandle.exec(SCHEMA);
+  migrateDecodedColumn(dbHandle);
   return dbHandle;
 }
 
@@ -46,6 +58,7 @@ export interface PolicyEventRow {
   signature: string | null;
   payload: string;
   received_at: number;
+  decoded: string | null;
 }
 
 export interface EscalationRow {

@@ -9,6 +9,15 @@ interface PolicyEventRow {
   signature: string | null;
   payload: string;
   received_at: number;
+  decoded: string | null;
+}
+
+interface DecodedShape {
+  kind: "registered" | "updated" | "revoked" | "unknown";
+  agent: string;
+  policyPda: string | null;
+  owner: string | null;
+  rootHex: string | null;
 }
 
 export default function LiveActivity() {
@@ -49,24 +58,60 @@ export default function LiveActivity() {
             <tr style={{ textAlign: "left", opacity: 0.6 }}>
               <th>kind</th>
               <th>agent</th>
+              <th>root</th>
               <th>signature</th>
               <th>received</th>
             </tr>
           </thead>
           <tbody>
-            {events.map((e) => (
-              <tr key={e.id} style={{ borderTop: "1px solid #1f242c" }}>
-                <td>{e.kind}</td>
-                <td>{short(e.agent)}</td>
-                <td>{e.signature ? short(e.signature) : "—"}</td>
-                <td>{new Date(e.received_at).toLocaleTimeString()}</td>
-              </tr>
-            ))}
+            {events.map((e) => {
+              const dec = parseDecoded(e.decoded);
+              const agentLabel =
+                dec?.agent && dec.agent !== "unknown" ? dec.agent : e.agent;
+              return (
+                <tr key={e.id} style={{ borderTop: "1px solid #1f242c" }}>
+                  <td>
+                    <span style={kindStyle(e.kind)}>{e.kind}</span>
+                  </td>
+                  <td title={agentLabel}>{short(agentLabel)}</td>
+                  <td title={dec?.rootHex ?? ""}>
+                    {dec?.rootHex ? `${dec.rootHex.slice(0, 8)}…` : "—"}
+                  </td>
+                  <td>{e.signature ? short(e.signature) : "—"}</td>
+                  <td>{new Date(e.received_at).toLocaleTimeString()}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
     </div>
   );
+}
+
+function parseDecoded(s: string | null): DecodedShape | null {
+  if (!s) return null;
+  try {
+    return JSON.parse(s) as DecodedShape;
+  } catch {
+    return null;
+  }
+}
+
+function kindStyle(kind: string): React.CSSProperties {
+  const colors: Record<string, [string, string]> = {
+    registered: ["#173", "#dfe"],
+    updated: ["#137", "#dde"],
+    revoked: ["#511", "#fee"],
+  };
+  const [bg, fg] = colors[kind] ?? ["#222", "#aaa"];
+  return {
+    background: bg,
+    color: fg,
+    padding: "0.1rem 0.4rem",
+    borderRadius: 3,
+    fontSize: "0.7rem",
+  };
 }
 
 function short(s: string) {
