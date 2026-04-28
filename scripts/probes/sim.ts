@@ -19,7 +19,7 @@ if (!apiKey || !address) {
 }
 
 async function main() {
-  const url = `https://api.sim.dune.com/v1/svm/balances/${address}`;
+  const url = `https://api.sim.dune.com/beta/svm/balances/${address}`;
   console.log(`[sim] GET ${url}`);
   const t0 = Date.now();
   const res = await fetch(url, { headers: { "X-Sim-Api-Key": apiKey! } });
@@ -34,7 +34,7 @@ async function main() {
   const out = resolve("docs/sim-response.md");
   mkdirSync(dirname(out), { recursive: true });
   const md = [
-    "# Dune SIM — /v1/svm/balances response shape",
+    "# Dune SIM — /beta/svm/balances response shape",
     "",
     `Probed: ${new Date().toISOString()}`,
     `Address: \`${address}\` · elapsed: ${elapsed}ms`,
