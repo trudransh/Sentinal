@@ -6,12 +6,21 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
-    "clean": "pnpm -r clean && rm -rf target .anchor"
+    "clean": "pnpm -r clean && rm -rf target .anchor",
+    "seed": "tsx scripts/seed-demo.ts",
+    "probe:pyth": "tsx scripts/probes/pyth.ts",
+    "probe:helius": "tsx scripts/probes/helius.ts",
+    "probe:sim": "tsx scripts/probes/sim.ts",
+    "probe:check-webhook": "tsx scripts/probes/check-webhook.ts",
+    "fire:register-policy": "tsx scripts/probes/fire-register-policy.ts"
   },
   "packageManager": "pnpm@10.20.0",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "devDependencies": {
     "@coral-xyz/anchor": "^0.32.0",
+    "@pythnetwork/hermes-client": "^1.4.0",
     "@solana/web3.js": "^1.95.0",
     "@types/chai": "^4.3.16",
     "@types/mocha": "^10.0.6",
@@ -19,6 +28,7 @@
     "chai": "^4.4.1",
     "mocha": "^10.4.0",
     "ts-mocha": "^10.0.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.4.0"
   }
 }

@@ -1,35 +1,39 @@
-# Pyth Hermes response (probed)
+# Pyth Hermes — SOL_USD response shape
 
-> **Status: PLACEHOLDER.** Replace with the actual response body returned by `HermesClient.getLatestPriceUpdates([feedIds])` once Phase 3 runs the oracle.
+Probed: 2026-04-28T10:40:24.406Z
+Endpoint: `https://hermes.pyth.network` · feed: `0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d` · elapsed: 1194ms
 
-## Tentative shape (per Pyth docs, verify on first call)
+## Raw JSON
 
-```ts
-interface HermesResponse {
-  binary: { encoding: "hex" | "base64"; data: string[] };
-  parsed: Array<{
-    id: string;             // hex feed ID
-    price: {
-      price: string;        // integer as string (apply expo)
-      conf: string;
-      expo: number;         // negative; e.g. -8 for 8 decimals
-      publish_time: number; // unix seconds
-    };
-    ema_price: { price: string; conf: string; expo: number; publish_time: number };
-    metadata: { slot?: number; proof_available_time?: number; prev_publish_time?: number };
-  }>;
+```json
+{
+  "binary": {
+    "data": [
+      "504e41550100000003b801000000050d0133d0f2dd51e456e40504d4b3da9f0d1e5231f204b68df6cb86710fe8e9fa7f555c84cc99240b82b94a7bcd4044ef7a1a8e4be97cd696d6a686fa1806792c63f9010272f5b1b1ed89830f1e14c7c3b550cf428b967aec7b8f3aade87380382192536d3680bc8c92b85f944eb65172b4e79a4bce102bd80207e295cd707e19932ad2f400030b89be32c9c841c722526c2c837ec6d26647a5be413b8de9bf9a5ddb9e14f83f1dce83eaa063ef201f6c0d38ae044e8cfa4222a492f85ac92bb51be2ce1cdb410004bc2d6ac405304a281acdacaf2d26488c35ac465228973f38624d4406ec4fb31c56825b5ab031daeacd7ef270d63678391d0a0ca5e1093d244bada9059a96698101066b4507674b2c1ae55fb8bb2de3670fcec4e1cf3c5a4e8dd0cc95de90c3f87a5909d14a7643078bcac7d207259523469afc8b4f84e392fdcd7b3db3807ae0d40701070fc5c5ce2c9780b175820b16a8ca0be51166c5af3646eb2a9f19164f5e57548826e29b2386351bc5c46b04660b50afad84372047823dd22fd58f3bd871e842f700098d7a8b2a876833aa830c0898261d11ddc0048077e0c33951d16d7feaa40443a96b43fd69f2ef8975afb72a3c5c135190e43b871d8ee65de875bf6b971b806fa8000a8c8385124f427e992c3fe71e8ff29cea721cb3ebcc060f6075f32848ac025a0e6ad7483cbc6f0fa06650e224e3095525d418ac9aff240ce03811292328c0c0d2010c9f7d67af6d08f37356c092a7f2d581d84368770bb2cb66b8176e37d1a920fe372668d5a8287ff0044d67e258940d03b50bf19d00b36e7861907afef6b7dcaed4010dcad8279467280a985c72e073ee08d28a8d293b3f0e1ceceb4d0b3f8e76deb423673b2763ce76402d88c6e52caa8bcfeb9f41494d7059506dcc1aaf0e3e10854a010f77f2475b3fcc4ffaeb0d6cbd3e321e00dd2ffe9d9fd0d261598914cf626c553d35a8792905cb613150b5110ff0dfccd534d78f70beda59ba6c44e56eb07d143101107fb263f4bd5bab843507f735f7b9d20399e70af38f6d94947bc67ceda40b3cde489861f79efba53900cf70cc90d9ceae82a8d424d1c026c9e638b69a41587cb30112613f9c2ec90aafbcee57c1c7cc114cd459bc6b40ab08c9c0506e4adf6f8531ab16e40efd174bffeaf12eef39ce1b3ca69dda0e66dd5ff45c828acd4b0e786fde0169f08e9700000000001ae101faedac5851e32b9b23b5f9411a8c2bac4aae3ed4dd7b811dd1a72ea4aa71000000000c15e60601415557560000000000112390a100002710a36d5c8b3b0241d6704a3538c95b9bcb4de3891801005500ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d00000001f3217b27000000000036a733fffffff80000000069f08e970000000069f08e9600000001f3690088000000000045a97c0d245e9a891a9bee68e63cc78beaa77085595005af6c616e6772bd197655c31668d442886be0dedab58b3ee347ca80360c284d290a9d5feb1af0c47d1ed5dd619c59d95e5a9db4d0763618413601ba2785da5cee32626d88e09b92b9caa47d8ebe991419285b9f6cc4f5d9bca63f8c6783603352361f2cea58e4e98bb8508cba4ead401b9419dadba29d56e3b24cc94908820f57ee58c8cbf721b1daeb7d10d08dffe6e9049866a7de94250514e44b47f759c227b9d6bce02ecc9860d0a695d1d6871ffb6b95e50743a20939ceebd073860927c1ede10b77cf23042d357f8b9ceb75a7426d036b013115bb3a1a6f74c7d85e0375d3823e91245a40a9de75da34672a693c19"
+    ],
+    "encoding": "hex"
+  },
+  "parsed": [
+    {
+      "ema_price": {
+        "conf": "4565372",
+        "expo": -8,
+        "price": "8378712200",
+        "publish_time": 1777372823
+      },
+      "id": "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d",
+      "metadata": {
+        "prev_publish_time": 1777372822,
+        "proof_available_time": 1777372824,
+        "slot": 287543457
+      },
+      "price": {
+        "conf": "3581747",
+        "expo": -8,
+        "price": "8374024999",
+        "publish_time": 1777372823
+      }
+    }
+  ]
 }
 ```
-
-## Feed IDs we use
-
-| Symbol | Feed ID | Notes |
-|---|---|---|
-| SOL/USD | `0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d` | mainnet ID; same Hermes endpoint serves devnet |
-| USDC/USD | `0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a` | Sanity-checked on first call: must be within 0.95–1.05 |
-
-> **Confirm on first run** that the feed IDs above resolve. Pyth occasionally rotates feed IDs across major upgrades.
-
-## Stale rule
-
-If `now - publish_time*1000 >= 60_000`, treat the price as stale and return `Number.POSITIVE_INFINITY` for USD value. The engine will escalate.

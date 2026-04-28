@@ -16,3 +16,11 @@ test-ledger/
 .data/
 Implementation.md
 Plan.md
+.mcp.json
+.CHANGELOG.md
+SUBMISSION_PLAN.md
+docs/pitches
+docs/submission-checklist.md
+.swarm
+.claude-flow/
+.claude/

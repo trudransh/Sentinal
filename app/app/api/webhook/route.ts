@@ -4,7 +4,28 @@ import { classifyTx, type HeliusEnhancedTx } from "@/lib/helius";
 
 export const runtime = "nodejs";
 
+// D4: refuse to accept payloads when HELIUS_WEBHOOK_SECRET is unset in
+// production. The check runs per-request rather than at module load so Next's
+// "collect page data" phase during `next build` doesn't trigger the throw.
+function assertWebhookConfigured(): Response | null {
+  if (process.env.HELIUS_WEBHOOK_SECRET) return null;
+  const allowedInDev =
+    process.env.NODE_ENV !== "production" &&
+    process.env.SENTINEL_ALLOW_UNAUTH_WEBHOOK === "1";
+  if (allowedInDev) return null;
+  return NextResponse.json(
+    {
+      code: "WEBHOOK_NOT_CONFIGURED",
+      message:
+        "HELIUS_WEBHOOK_SECRET is required. Set it, or set SENTINEL_ALLOW_UNAUTH_WEBHOOK=1 in non-production.",
+    },
+    { status: 503 },
+  );
+}
+
 export async function POST(req: Request): Promise<Response> {
+  const guard = assertWebhookConfigured();
+  if (guard) return guard;
   const expected = process.env.HELIUS_WEBHOOK_SECRET;
   if (expected) {
     const got = req.headers.get("authorization");

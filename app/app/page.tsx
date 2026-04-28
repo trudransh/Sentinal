@@ -3,6 +3,8 @@ import LiveActivity from "./components/live-activity";
 import EscalationQueue from "./components/escalation-queue";
 import PolicyEditor from "./components/policy-editor";
 import BalanceWidget from "./components/balance-widget";
+import WalletControls from "./components/wallet-controls";
+import EscalationApprover from "./components/escalation-approver";
 
 const DEFAULT_AGENT =
   process.env.NEXT_PUBLIC_DEMO_AGENT ?? "AGENTPubKEy11111111111111111111111111111111";
@@ -10,12 +12,25 @@ const DEFAULT_AGENT =
 export default function Page() {
   return (
     <main style={{ padding: "1.5rem", maxWidth: 1280, margin: "0 auto" }}>
-      <header style={{ marginBottom: "1.5rem" }}>
-        <h1 style={{ margin: 0, fontSize: "1.4rem" }}>Sentinel</h1>
-        <p style={{ margin: "0.25rem 0 0 0", opacity: 0.7, fontSize: "0.85rem" }}>
-          Programmable transaction firewall for autonomous Solana agents
-        </p>
+      <header
+        style={{
+          marginBottom: "1.5rem",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: "1rem",
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <h1 style={{ margin: 0, fontSize: "1.4rem" }}>Sentinel</h1>
+          <p style={{ margin: "0.25rem 0 0 0", opacity: 0.7, fontSize: "0.85rem" }}>
+            Programmable transaction firewall for autonomous Solana agents
+          </p>
+        </div>
+        <WalletControls />
       </header>
+      <EscalationApprover programId={process.env.NEXT_PUBLIC_SENTINEL_PROGRAM_ID} />
 
       <section style={panel}>
         <h2 style={panelHeader}>Wallet balance ({short(DEFAULT_AGENT)})</h2>

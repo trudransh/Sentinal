@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import SentinelWalletProvider from "./components/wallet-provider";
 
 export const metadata = {
   title: "Sentinel — Solana transaction firewall",
@@ -18,7 +19,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           color: "#e6e9ef",
         }}
       >
-        {children}
+        <SentinelWalletProvider>{children}</SentinelWalletProvider>
       </body>
     </html>
   );

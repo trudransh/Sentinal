@@ -96,6 +96,13 @@ export class SentinelSigner implements Signer {
         ? createRateLimiter({ agent: this.#policy.agent, dbPath: cfg.rateLimitDb })
         : createInMemoryRateLimiter(this.#policy.agent));
 
+    // D3: prune anything older than 7d on startup so spend_log doesn't bloat.
+    // Owner-supplied limiters may have their own retention policy, so skip.
+    if (!cfg.rateLimiter) {
+      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+      this.#rateLimiter.prune(this.#now() - sevenDaysMs);
+    }
+
     if (cfg.policyFetcher) {
       this.#fetcher = cfg.policyFetcher;
     } else {

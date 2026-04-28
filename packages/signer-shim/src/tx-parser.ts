@@ -19,6 +19,10 @@ import { SentinelError } from "./errors.js";
 
 const USDC_MINT_MAINNET = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const USDC_MINT_DEVNET = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
+// D9: Token-2022 has new extensions (transfer hooks, confidential transfers)
+// that change instruction layout and trust assumptions. Reject explicitly so
+// agents can't slip past via the newer program — caller must use Token v1.
+const TOKEN_2022_PROGRAM_ID_B58 = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 
 export interface ParseEnv {
   splDecimalsCache: Map<string, number>;
@@ -46,6 +50,13 @@ export async function parseTx(tx: Transaction, env: ParseEnv): Promise<TxSummary
 
   for (const ix of tx.instructions) {
     const programId = ix.programId.toBase58();
+
+    if (programId === TOKEN_2022_PROGRAM_ID_B58) {
+      throw new SentinelError(
+        "TOKEN_2022_NOT_SUPPORTED",
+        "Token-2022 transfers are rejected in MVP — extensions (hooks, confidential transfers) change trust assumptions",
+      );
+    }
 
     if (ix.programId.equals(SystemProgram.programId)) {
       out.push(await parseSystemIx(ix, env, programId, now, usdcMints));

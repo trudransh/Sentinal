@@ -1,5 +1,9 @@
 import { Keypair, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID, createTransferCheckedInstruction } from "@solana/spl-token";
+import {
+  TOKEN_PROGRAM_ID,
+  createTransferCheckedInstruction,
+  getAssociatedTokenAddressSync,
+} from "@solana/spl-token";
 import type { PaymentBuilder, PaymentReceipt, PaymentRequirements } from "./types.js";
 import type { TxSummary } from "@sentinel/policy-dsl";
 
@@ -50,7 +54,14 @@ export function createStubPaymentBuilder(opts: {
       } else {
         const decimals = 6;
         const raw = BigInt(Math.round(req.amount * 10 ** decimals));
-        const sourceAta = Keypair.generate().publicKey;
+        // OFFLINE-ONLY STUB: we put the wallet pubkey into the instruction's
+        // destination key so SentinelSigner's tx-parser (which has no RPC and
+        // can't reverse ATA → owner) sees an allowlist-friendly address.
+        // The instruction is intentionally invalid for on-chain execution.
+        // A3 (live x402 spike with @quicknode/x402-solana) replaces this builder
+        // with a real ATA-based one AND adds ATA→owner inversion to tx-parser
+        // so allowlists keep working end-to-end. Touch both at once or revert.
+        const sourceAta = getAssociatedTokenAddressSync(USDC_DEV, opts.agent.publicKey);
         const destAta = payTo;
         tx.add(
           createTransferCheckedInstruction(

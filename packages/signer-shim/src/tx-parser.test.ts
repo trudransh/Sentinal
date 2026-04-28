@@ -4,6 +4,7 @@ import {
   PublicKey,
   SystemProgram,
   Transaction,
+  TransactionInstruction,
   VersionedTransaction,
   VersionedMessage,
   TransactionMessage,
@@ -13,6 +14,8 @@ import {
   createTransferInstruction,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
+
+const TOKEN_2022_PROGRAM_ID = new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 
 import { parseTx } from "./tx-parser.js";
 import { stubOracle } from "./price-oracle.js";
@@ -106,6 +109,24 @@ describe("tx-parser", () => {
     await expect(
       parseTx(vtx as unknown as Transaction, envForTest()),
     ).rejects.toMatchObject({ code: "UNSUPPORTED_TX" });
+  });
+
+  it("rejects Token-2022 instructions with TOKEN_2022_NOT_SUPPORTED", async () => {
+    const tx = new Transaction();
+    tx.add(
+      new TransactionInstruction({
+        programId: TOKEN_2022_PROGRAM_ID,
+        keys: [
+          { pubkey: Keypair.generate().publicKey, isSigner: false, isWritable: true },
+          { pubkey: Keypair.generate().publicKey, isSigner: false, isWritable: true },
+          { pubkey: AGENT_KP.publicKey, isSigner: true, isWritable: false },
+        ],
+        data: Buffer.from([3, 0, 0, 0, 0, 0, 0, 0, 0]),
+      }),
+    );
+    await expect(parseTx(tx, envForTest())).rejects.toMatchObject({
+      code: "TOKEN_2022_NOT_SUPPORTED",
+    });
   });
 
   it("multi-instruction tx returns one summary per instruction", async () => {

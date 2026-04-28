@@ -18,7 +18,7 @@ const POLICY_PATH =
 
 let cachedPolicy = null;
 let cachedAt = 0;
-const POLICY_TTL_MS = 5_000;
+const POLICY_TTL_MS = 30_000;
 
 function loadPolicy() {
   const now = Date.now();

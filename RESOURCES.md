@@ -41,6 +41,7 @@ This file is the source of truth for facts that the docs would otherwise lie abo
 | `WEBHOOK_AUTH_FAILED` | dashboard | Helius webhook missing/wrong Authorization |
 | `INVALID_POLICY` | schema | YAML or zod parse fail |
 | `ESCALATION_REQUIRED` | signer-shim | engine returned `escalate`; ticket enqueued |
+| `TOKEN_2022_NOT_SUPPORTED` | tx-parser | tx contains a Token-2022 instruction (D9) |
 
 ## Probed shapes (filled by probes — do not invent)
 
@@ -48,6 +49,31 @@ This file is the source of truth for facts that the docs would otherwise lie abo
 - `docs/helius-payload.md` — Helius webhook body (Phase 5)
 - `docs/pyth-response.md` — Hermes `getLatestPriceUpdates` shape (Phase 3)
 - `docs/x402-payload.md` — chosen x402 SDK request/response (Phase 4)
+
+## Cargo.lock SBF pins (D7)
+
+These pins exist because the Solana SBF toolchain bundles cargo 1.84, which
+cannot parse `edition2024` declarations from newer transitive deps. They are
+**not arbitrary**; they target the following toolchain combination, and must
+be re-evaluated on any toolchain bump:
+
+- Anchor CLI **0.32.1**
+- Solana CLI (Agave) **3.0.13**
+- Bundled SBF cargo: **1.84** (do not upgrade independently)
+
+Pinned crates:
+
+| Crate | Pin | Why |
+|---|---|---|
+| `proc-macro-crate` | `3.3.0` | `3.5+` requires edition2024 |
+| `toml_datetime` | `0.6.11` | newer pulls edition2024 |
+| `toml_edit` | `0.22.27` | aligns with `proc-macro-crate` lock |
+| `indexmap` | `2.10.0` | newer pulls `unicode-ident` w/ edition2024 |
+| `unicode-segmentation` | `1.12.0` | downstream of `proc-macro-crate` |
+
+If `anchor build` breaks with `feature edition2024 is required`, **first**
+check whether the toolchain has changed. Re-pin only after confirming the
+bundled cargo version, **not** to silence the error blindly.
 
 ## Sponsor URLs (verify on submission day)
 
