@@ -43,8 +43,7 @@ const DISC_REGISTER = new Uint8Array([62, 66, 167, 36, 252, 227, 38, 132]);
 const DISC_UPDATE = new Uint8Array([212, 245, 246, 7, 163, 151, 18, 57]);
 const DISC_REVOKE = new Uint8Array([49, 221, 179, 43, 154, 148, 35, 4]);
 
-const PROGRAM_ID =
-  process.env.SENTINEL_PROGRAM_ID ?? process.env.NEXT_PUBLIC_SENTINEL_PROGRAM_ID;
+const PROGRAM_ID = process.env.SENTINEL_REGISTRY_PROGRAM_ID;
 
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const BASE58_MAP: Record<string, number> = (() => {

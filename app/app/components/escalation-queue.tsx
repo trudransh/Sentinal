@@ -43,42 +43,48 @@ export default function EscalationQueue() {
   }
 
   if (rows.length === 0) {
-    return <div style={{ opacity: 0.5, fontSize: "0.85rem" }}>no pending escalations</div>;
+    return (
+      <div style={{ opacity: 0.4, fontSize: "0.8rem" }}>
+        no pending escalations
+      </div>
+    );
   }
 
   return (
-    <div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
       {rows.map((row) => (
         <div
           key={row.id}
           style={{
             padding: "0.75rem",
-            border: "1px solid #1f242c",
-            borderRadius: 4,
-            marginBottom: "0.5rem",
+            border: "1px solid var(--border-subtle)",
+            borderRadius: "var(--radius-md)",
+            background: "var(--bg-secondary)",
             display: "flex",
             justifyContent: "space-between",
+            alignItems: "center",
             gap: "1rem",
+            transition: "border-color var(--transition-fast)",
           }}
         >
           <div>
-            <div style={{ fontSize: "0.85rem" }}>{row.reason}</div>
-            <div style={{ fontSize: "0.7rem", opacity: 0.6 }}>
+            <div style={{ fontSize: "0.82rem", color: "var(--text-primary)" }}>{row.reason}</div>
+            <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>
               agent {short(row.agent)} · {new Date(row.created_at).toLocaleTimeString()}
             </div>
           </div>
-          <div style={{ display: "flex", gap: "0.5rem" }}>
+          <div style={{ display: "flex", gap: "0.4rem", flexShrink: 0 }}>
             <button
               onClick={() => decide(row.id, "approve")}
               disabled={busy === row.id}
-              style={btnApprove}
+              className="btn btn-primary"
             >
               approve
             </button>
             <button
               onClick={() => decide(row.id, "reject")}
               disabled={busy === row.id}
-              style={btnReject}
+              className="btn btn-danger"
             >
               reject
             </button>
@@ -88,17 +94,6 @@ export default function EscalationQueue() {
     </div>
   );
 }
-
-const btnBase: React.CSSProperties = {
-  fontFamily: "inherit",
-  fontSize: "0.8rem",
-  padding: "0.3rem 0.7rem",
-  borderRadius: 3,
-  border: "1px solid #1f242c",
-  cursor: "pointer",
-};
-const btnApprove: React.CSSProperties = { ...btnBase, background: "#173", color: "#dfe", borderColor: "#2a5" };
-const btnReject: React.CSSProperties = { ...btnBase, background: "#511", color: "#fee", borderColor: "#933" };
 
 function short(s: string) {
   return s.length > 12 ? `${s.slice(0, 6)}…${s.slice(-4)}` : s;

@@ -41,45 +41,61 @@ export default function PolicyEditor() {
 
   return (
     <div>
-      <div style={{ height: 320, border: "1px solid #1f242c", borderRadius: 4, overflow: "hidden" }}>
+      <div style={{
+        height: 280,
+        border: "1px solid var(--border-subtle)",
+        borderRadius: "var(--radius-md)",
+        overflow: "hidden",
+      }}>
         <Monaco
           defaultLanguage="yaml"
           value={yaml}
           theme="vs-dark"
           options={{
             minimap: { enabled: false },
-            fontSize: 12,
+            fontSize: 12.5,
+            fontFamily: "var(--font-mono)",
             lineNumbers: "on",
             scrollBeyondLastLine: false,
+            padding: { top: 8 },
+            renderLineHighlight: "none",
           }}
           onChange={(v) => setYaml(v ?? "")}
         />
       </div>
-      <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.5rem", alignItems: "center" }}>
-        <button onClick={validate} disabled={busy} style={btn}>
+      <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+        <button onClick={validate} disabled={busy} className="btn btn-primary">
           validate + compute root
         </button>
         {result?.ok === true && (
-          <code style={{ fontSize: "0.75rem", opacity: 0.85 }}>root: {result.rootHex}</code>
+          <code style={{
+            fontSize: "0.72rem",
+            color: "var(--accent-green)",
+            fontFamily: "var(--font-mono)",
+            background: "var(--accent-green-dim)",
+            padding: "0.2rem 0.5rem",
+            borderRadius: "var(--radius-sm)",
+            border: "1px solid var(--accent-green-border)",
+          }}>
+            root: {result.rootHex.slice(0, 16)}…
+          </code>
         )}
         {result?.ok === false && (
-          <span style={{ fontSize: "0.75rem", color: "#f88" }}>{result.error}</span>
+          <span style={{
+            fontSize: "0.72rem",
+            color: "var(--accent-red)",
+            background: "var(--accent-red-dim)",
+            padding: "0.2rem 0.5rem",
+            borderRadius: "var(--radius-sm)",
+            border: "1px solid var(--accent-red-border)",
+          }}>
+            {result.error}
+          </span>
         )}
       </div>
-      <div style={{ marginTop: "0.5rem", fontSize: "0.7rem", opacity: 0.6 }}>
-        Submitting `update_policy` on-chain happens in the operator wallet flow, not the dashboard.
+      <div style={{ marginTop: "0.5rem", fontSize: "0.68rem", color: "var(--text-muted)" }}>
+        On-chain <code style={{ color: "var(--accent-blue)" }}>update_policy</code> is signed via the wallet flow above.
       </div>
     </div>
   );
 }
-
-const btn: React.CSSProperties = {
-  fontFamily: "inherit",
-  fontSize: "0.8rem",
-  padding: "0.4rem 0.8rem",
-  borderRadius: 3,
-  border: "1px solid #2a5",
-  background: "#173",
-  color: "#dfe",
-  cursor: "pointer",
-};

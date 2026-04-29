@@ -232,6 +232,10 @@ importers:
       vitest:
         specifier: ^1.6.0
         version: 1.6.1(@types/node@20.19.39)(terser@5.46.2)
+    optionalDependencies:
+      better-sqlite3:
+        specifier: ^11.5.0
+        version: 11.10.0
 
 packages:
 

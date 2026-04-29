@@ -79,7 +79,7 @@ export default function EscalationApprover({
   async function approveAndUpdate(id: string) {
     setErrorMsg(null);
     if (!programPk) {
-      setErrorMsg("NEXT_PUBLIC_SENTINEL_PROGRAM_ID is not set");
+      setErrorMsg("SENTINEL_REGISTRY_PROGRAM_ID is not set");
       return;
     }
     if (!connected || !publicKey || !signTransaction) {
@@ -161,38 +161,40 @@ export default function EscalationApprover({
     <>
       <ApprovalModal approval={approval} onResolved={onResolved} />
       {showUpdate && approval && (
-        <div style={overlay}>
-          <div style={card}>
-            <h3 style={{ margin: "0 0 0.5rem 0" }}>Approve &amp; update policy</h3>
-            <p style={{ margin: 0, opacity: 0.75, fontSize: "0.8rem" }}>
-              The connected wallet will sign an <code>update_policy</code> ix on devnet.
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.1rem", fontWeight: 600 }}>Approve &amp; update policy</h3>
+            <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: "0.8rem" }}>
+              The connected wallet will sign an <code style={{ color: "var(--accent-blue)" }}>update_policy</code> ix on devnet.
               Paste the agent pubkey and the new sha256 policy root.
             </p>
-            <label style={{ display: "block", marginTop: "0.75rem", fontSize: "0.75rem" }}>
+            <label style={{ display: "block", marginTop: "0.75rem", fontSize: "0.72rem", color: "var(--text-secondary)" }}>
               agent pubkey
               <input
                 value={agentInput}
                 onChange={(e) => setAgentInput(e.target.value)}
                 placeholder="base58 pubkey"
-                style={input}
+                className="input"
+                style={{ marginTop: "0.25rem" }}
               />
             </label>
-            <label style={{ display: "block", marginTop: "0.5rem", fontSize: "0.75rem" }}>
+            <label style={{ display: "block", marginTop: "0.5rem", fontSize: "0.72rem", color: "var(--text-secondary)" }}>
               new policy root (hex)
               <input
                 value={rootInput}
                 onChange={(e) => setRootInput(e.target.value)}
                 placeholder="64 hex chars"
-                style={input}
+                className="input"
+                style={{ marginTop: "0.25rem" }}
               />
             </label>
             {errorMsg && (
-              <div style={{ marginTop: "0.5rem", color: "#fbb", fontSize: "0.75rem" }}>
+              <div style={{ marginTop: "0.5rem", color: "var(--accent-red)", fontSize: "0.75rem" }}>
                 {errorMsg}
               </div>
             )}
             {busyMsg && (
-              <div style={{ marginTop: "0.5rem", color: "#dfd", fontSize: "0.75rem" }}>
+              <div style={{ marginTop: "0.5rem", color: "var(--accent-green)", fontSize: "0.75rem" }}>
                 {busyMsg}
               </div>
             )}
@@ -204,13 +206,13 @@ export default function EscalationApprover({
                 justifyContent: "flex-end",
               }}
             >
-              <button onClick={() => setShowUpdate(false)} style={btnReject}>
+              <button onClick={() => setShowUpdate(false)} className="btn btn-ghost">
                 cancel
               </button>
               <button
                 onClick={() => approveAndUpdate(approval.id)}
                 disabled={!!busyMsg}
-                style={btnApprove}
+                className="btn btn-primary"
               >
                 sign &amp; broadcast
               </button>
@@ -222,41 +224,4 @@ export default function EscalationApprover({
   );
 }
 
-const overlay: React.CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0,0,0,0.5)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 110,
-};
-const card: React.CSSProperties = {
-  background: "#13171c",
-  border: "1px solid #1f242c",
-  borderRadius: 6,
-  padding: "1.25rem",
-  width: "min(520px, 90%)",
-};
-const input: React.CSSProperties = {
-  display: "block",
-  width: "100%",
-  marginTop: "0.25rem",
-  background: "#0b0d10",
-  color: "#e6e9ef",
-  border: "1px solid #1f242c",
-  borderRadius: 3,
-  padding: "0.4rem 0.5rem",
-  fontFamily: "inherit",
-  fontSize: "0.8rem",
-  boxSizing: "border-box",
-};
-const btnBase: React.CSSProperties = {
-  fontFamily: "inherit",
-  fontSize: "0.85rem",
-  padding: "0.4rem 0.9rem",
-  borderRadius: 3,
-  cursor: "pointer",
-};
-const btnApprove: React.CSSProperties = { ...btnBase, background: "#173", color: "#dfe", border: "1px solid #2a5" };
-const btnReject: React.CSSProperties = { ...btnBase, background: "#511", color: "#fee", border: "1px solid #933" };
+// Styles moved to globals.css — modal-overlay, modal-card, input, btn, btn-primary, btn-ghost

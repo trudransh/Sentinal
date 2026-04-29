@@ -1,6 +1,7 @@
 {
   "name": "@sentinel/policy-dsl",
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "description": "Programmable policy DSL for Solana agent transaction firewalls — parse, evaluate, and canonicalize policies with zero I/O",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -10,11 +11,31 @@
     "./engine": "./dist/engine.js",
     "./canonicalize": "./dist/canonicalize.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "solana",
+    "policy",
+    "firewall",
+    "agent",
+    "dsl",
+    "sentinel",
+    "transaction"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dracian/Sentinal",
+    "directory": "packages/policy-dsl"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepack": "pnpm run build"
   },
   "dependencies": {
     "yaml": "^2.5.0",

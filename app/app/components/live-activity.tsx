@@ -46,16 +46,22 @@ export default function LiveActivity() {
 
   return (
     <div>
-      <div style={{ fontSize: "0.75rem", opacity: 0.6, marginBottom: "0.5rem" }}>
-        SSE: {connected ? "connected" : "disconnected"} · pending escalations:{" "}
-        {pending}
+      <div className="sse-status" style={{ marginBottom: "0.75rem" }}>
+        <span className={`sse-dot ${connected ? "connected" : "disconnected"}`} />
+        SSE {connected ? "connected" : "disconnected"}
+        <span style={{ marginLeft: "0.5rem" }}>·</span>
+        <span style={{ marginLeft: "0.5rem" }}>
+          {pending} pending escalation{pending !== 1 ? "s" : ""}
+        </span>
       </div>
       {events.length === 0 ? (
-        <div style={{ opacity: 0.5 }}>no events yet</div>
+        <div style={{ opacity: 0.4, fontSize: "0.8rem" }}>
+          no events yet — fire a transaction or run <code style={{ color: "var(--accent-blue)" }}>pnpm seed</code>
+        </div>
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
+        <table className="data-table">
           <thead>
-            <tr style={{ textAlign: "left", opacity: 0.6 }}>
+            <tr>
               <th>kind</th>
               <th>agent</th>
               <th>root</th>
@@ -69,16 +75,22 @@ export default function LiveActivity() {
               const agentLabel =
                 dec?.agent && dec.agent !== "unknown" ? dec.agent : e.agent;
               return (
-                <tr key={e.id} style={{ borderTop: "1px solid #1f242c" }}>
+                <tr key={e.id}>
                   <td>
-                    <span style={kindStyle(e.kind)}>{e.kind}</span>
+                    <span className={`badge ${kindBadgeClass(e.kind)}`}>{e.kind}</span>
                   </td>
-                  <td title={agentLabel}>{short(agentLabel)}</td>
-                  <td title={dec?.rootHex ?? ""}>
+                  <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem" }} title={agentLabel}>
+                    {short(agentLabel)}
+                  </td>
+                  <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem" }} title={dec?.rootHex ?? ""}>
                     {dec?.rootHex ? `${dec.rootHex.slice(0, 8)}…` : "—"}
                   </td>
-                  <td>{e.signature ? short(e.signature) : "—"}</td>
-                  <td>{new Date(e.received_at).toLocaleTimeString()}</td>
+                  <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem" }}>
+                    {e.signature ? short(e.signature) : "—"}
+                  </td>
+                  <td style={{ fontSize: "0.75rem" }}>
+                    {new Date(e.received_at).toLocaleTimeString()}
+                  </td>
                 </tr>
               );
             })}
@@ -98,20 +110,13 @@ function parseDecoded(s: string | null): DecodedShape | null {
   }
 }
 
-function kindStyle(kind: string): React.CSSProperties {
-  const colors: Record<string, [string, string]> = {
-    registered: ["#173", "#dfe"],
-    updated: ["#137", "#dde"],
-    revoked: ["#511", "#fee"],
-  };
-  const [bg, fg] = colors[kind] ?? ["#222", "#aaa"];
-  return {
-    background: bg,
-    color: fg,
-    padding: "0.1rem 0.4rem",
-    borderRadius: 3,
-    fontSize: "0.7rem",
-  };
+function kindBadgeClass(kind: string): string {
+  switch (kind) {
+    case "registered": return "badge-green";
+    case "updated": return "badge-blue";
+    case "revoked": return "badge-red";
+    default: return "badge-yellow";
+  }
 }
 
 function short(s: string) {
