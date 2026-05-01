@@ -8,7 +8,7 @@
 // D2: Uses a real SQLite rate limiter (shared via DATABASE_PATH env) so that
 // caps and rate_limit rules are enforced — noopHistory silently bypassed them.
 
-import { readFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { parse as parseYaml } from "yaml";
@@ -21,7 +21,7 @@ import { adaptCtx } from "./adapter.js";
 let _rateLimiter = null;
 let _rateLimiterInitialized = false;
 
-function getHistory(agent) {
+async function getHistory(agent) {
   if (_rateLimiterInitialized) return _rateLimiter;
   _rateLimiterInitialized = true;
   try {
@@ -108,6 +108,13 @@ export async function check(ctx) {
   if (summaries === null) {
     // Non-Solana chain — defer to Zerion's own EVM rules.
     return { allow: true };
+  }
+
+  // HARDEN: an adapter that returns an empty array means "no decodable
+  // instructions". Don't silently allow — a malicious caller could pass a
+  // degenerate ctx to bypass caps. Refuse on empty.
+  if (summaries.length === 0) {
+    return { allow: false, reason: "Sentinel: no decodable instructions in tx" };
   }
 
   // D2: Use real rate limiter if available, noopHistory otherwise

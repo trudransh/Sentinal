@@ -198,4 +198,41 @@ describe("createSentinelFetch", () => {
   it("parseRequirements rejects malformed headers", () => {
     expect(() => parseRequirements(JSON.stringify({ scheme: "exact" }))).toThrow();
   });
+
+  it("parseRequirements rejects empty / non-string input", () => {
+    expect(() => parseRequirements("")).toThrow(/empty/);
+    expect(() => parseRequirements(undefined as unknown as string)).toThrow();
+  });
+
+  it("parseRequirements rejects unparseable JSON", () => {
+    expect(() => parseRequirements("not-json{{{")).toThrow(/JSON/);
+  });
+
+  it("parseRequirements rejects negative or non-finite amounts", () => {
+    const base = {
+      scheme: "exact",
+      network: "solana:devnet",
+      amount: -1,
+      token: "USDC",
+      payTo: "x",
+      resourceUrl: "https://example/",
+    };
+    expect(() => parseRequirements(JSON.stringify(base))).toThrow();
+    expect(() =>
+      parseRequirements(JSON.stringify({ ...base, amount: Number.NaN })),
+    ).toThrow();
+  });
+
+  it("parseRequirements rejects oversized header values", () => {
+    const huge = JSON.stringify({
+      scheme: "exact",
+      network: "solana:devnet",
+      amount: 1,
+      token: "USDC",
+      payTo: "x",
+      resourceUrl: "https://example/",
+      pad: "a".repeat(10_000),
+    });
+    expect(() => parseRequirements(huge)).toThrow(/size cap/);
+  });
 });

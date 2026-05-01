@@ -257,6 +257,156 @@ describe("SentinelSigner", () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  it("propagates RATE_LIMITED via POLICY_VIOLATION when sliding window is full", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "sentinel-test-"));
+    const agentKeypair = Keypair.generate();
+    const policy = {
+      version: 1,
+      agent: agentKeypair.publicKey.toBase58(),
+      caps: [{ token: "SOL", max_per_day: 10 }],
+      rate_limit: { max_tx_per_minute: 1 },
+    };
+    const policyPath = join(dir, "policy.yml");
+    writeFileSync(policyPath, yamlStringify(policy), "utf8");
+    const fetcher: PolicyFetcher = {
+      async ensureMatch() {},
+      invalidateCache() {},
+      async close() {},
+    };
+    const rl = createInMemoryRateLimiter(agentKeypair.publicKey.toBase58());
+    // Pre-fill the window with one tx so the next sign hits the rate-limit.
+    rl.record({
+      agent: agentKeypair.publicKey.toBase58(),
+      token: "SOL",
+      amount: 0.001,
+      destination: Keypair.generate().publicKey.toBase58(),
+      programId: SystemProgram.programId.toBase58(),
+      usdValue: 0,
+      timestamp: Date.now(),
+    });
+    try {
+      const signer = new SentinelSigner({
+        policyPath,
+        agentKeypair,
+        registryProgramId: PROGRAM_ID,
+        oracle: stubOracle,
+        rateLimiter: rl,
+        policyFetcher: fetcher,
+      });
+      const tx = transferTx(
+        agentKeypair.publicKey,
+        Keypair.generate().publicKey,
+        100_000,
+      );
+      await expect(signer.signTransaction(tx)).rejects.toMatchObject({
+        code: "POLICY_VIOLATION",
+      });
+    } finally {
+      rl.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects an instruction whose programId is not in policy.programs.allow", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "sentinel-test-"));
+    const agentKeypair = Keypair.generate();
+    const unknownProgram = Keypair.generate().publicKey;
+    const policy = {
+      version: 1,
+      agent: agentKeypair.publicKey.toBase58(),
+      caps: [{ token: "SOL", max_per_day: 10 }],
+    };
+    const policyPath = join(dir, "policy.yml");
+    writeFileSync(policyPath, yamlStringify(policy), "utf8");
+    const fetcher: PolicyFetcher = {
+      async ensureMatch() {},
+      invalidateCache() {},
+      async close() {},
+    };
+    const rl = createInMemoryRateLimiter(agentKeypair.publicKey.toBase58());
+    try {
+      const signer = new SentinelSigner({
+        policyPath,
+        agentKeypair,
+        registryProgramId: PROGRAM_ID,
+        oracle: stubOracle,
+        rateLimiter: rl,
+        policyFetcher: fetcher,
+      });
+      const tx = new Transaction();
+      tx.recentBlockhash = "11111111111111111111111111111111";
+      tx.feePayer = agentKeypair.publicKey;
+      tx.add({
+        programId: unknownProgram,
+        keys: [
+          { pubkey: agentKeypair.publicKey, isSigner: true, isWritable: true },
+        ],
+        data: Buffer.from([0xde, 0xad, 0xbe, 0xef]),
+      });
+      await expect(signer.signTransaction(tx)).rejects.toMatchObject({
+        code: "UNSUPPORTED_TX",
+      });
+    } finally {
+      rl.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("re-reads policy YAML when its mtime changes (TOCTOU defense)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "sentinel-test-"));
+    const agentKeypair = Keypair.generate();
+    const goodDest = Keypair.generate().publicKey;
+    const evilDest = Keypair.generate().publicKey;
+    const policy1 = {
+      version: 1,
+      agent: agentKeypair.publicKey.toBase58(),
+      caps: [{ token: "SOL", max_per_day: 1 }],
+      allowlist: { destinations: [goodDest.toBase58()] },
+    };
+    const policyPath = join(dir, "policy.yml");
+    writeFileSync(policyPath, yamlStringify(policy1), "utf8");
+    const fetcher: PolicyFetcher = {
+      async ensureMatch() {},
+      invalidateCache() {},
+      async close() {},
+    };
+    const rl = createInMemoryRateLimiter(agentKeypair.publicKey.toBase58());
+    try {
+      const signer = new SentinelSigner({
+        policyPath,
+        agentKeypair,
+        registryProgramId: PROGRAM_ID,
+        oracle: stubOracle,
+        rateLimiter: rl,
+        policyFetcher: fetcher,
+      });
+      // First call: dest is allowlisted → signed.
+      await signer.signTransaction(transferTx(agentKeypair.publicKey, goodDest, 1_000));
+      // Attacker swaps the YAML on disk to allow a different (malicious) dest.
+      // mtime advances; the signer must catch the change. We bump mtime
+      // explicitly to be deterministic across filesystems with second
+      // granularity.
+      const newer = Date.now() / 1000 + 5;
+      writeFileSync(
+        policyPath,
+        yamlStringify({
+          ...policy1,
+          allowlist: { destinations: [evilDest.toBase58()] },
+        }),
+        "utf8",
+      );
+      const fs = await import("node:fs");
+      fs.utimesSync(policyPath, newer, newer);
+      // Second call: previous dest is now NOT in the swapped policy → deny.
+      await expect(
+        signer.signTransaction(transferTx(agentKeypair.publicKey, goodDest, 1_000)),
+      ).rejects.toMatchObject({ code: "POLICY_VIOLATION" });
+    } finally {
+      rl.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("multi-instruction tx: one denial fails the whole tx", async () => {
     const dir = mkdtempSync(join(tmpdir(), "sentinel-test-"));
     const agentKeypair = Keypair.generate();

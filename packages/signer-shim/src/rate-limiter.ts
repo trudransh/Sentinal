@@ -49,7 +49,12 @@ export function createRateLimiter(opts: RateLimiterOptions): RateLimiter {
   const countStmt = db.prepare(
     `SELECT COUNT(*) AS n FROM spend_log WHERE agent = ? AND timestamp >= ?`,
   );
-  const pruneStmt = db.prepare(`DELETE FROM spend_log WHERE timestamp < ?`);
+  // HARDEN: scope prune to this agent. The previous `WHERE timestamp < ?`
+  // wiped rows for every agent sharing the SQLite file, weakening
+  // max_per_day caps for adjacent agents on multi-tenant hosts.
+  const pruneStmt = db.prepare(
+    `DELETE FROM spend_log WHERE agent = ? AND timestamp < ?`,
+  );
 
   return {
     record(tx: TxSummary) {
@@ -66,7 +71,7 @@ export function createRateLimiter(opts: RateLimiterOptions): RateLimiter {
       return row.n ?? 0;
     },
     prune(olderThanMs: number) {
-      pruneStmt.run(olderThanMs);
+      pruneStmt.run(opts.agent, olderThanMs);
     },
     close() {
       db.close();

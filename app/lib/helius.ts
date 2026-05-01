@@ -43,7 +43,17 @@ const DISC_REGISTER = new Uint8Array([62, 66, 167, 36, 252, 227, 38, 132]);
 const DISC_UPDATE = new Uint8Array([212, 245, 246, 7, 163, 151, 18, 57]);
 const DISC_REVOKE = new Uint8Array([49, 221, 179, 43, 154, 148, 35, 4]);
 
-const PROGRAM_ID = process.env.SENTINEL_REGISTRY_PROGRAM_ID;
+// Canonical: SENTINEL_REGISTRY_PROGRAM_ID. Accept SENTINEL_PROGRAM_ID as a
+// legacy alias so a misconfigured env doesn't silently drop into the
+// "first ix" heuristic, which used to happen because the schema, the
+// dashboard, and the test fixture each used a different name (Bug #4).
+function readProgramId(): string | undefined {
+  return (
+    process.env.SENTINEL_REGISTRY_PROGRAM_ID ??
+    process.env.SENTINEL_PROGRAM_ID ??
+    process.env.NEXT_PUBLIC_SENTINEL_REGISTRY_PROGRAM_ID
+  );
+}
 
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const BASE58_MAP: Record<string, number> = (() => {
@@ -104,7 +114,7 @@ function findSentinelInstruction(
   tx: HeliusEnhancedTx,
 ): HeliusEnhancedInstruction | null {
   if (!tx.instructions || tx.instructions.length === 0) return null;
-  const targetProgram = PROGRAM_ID;
+  const targetProgram = readProgramId();
 
   // Prefer the first ix whose programId matches our deployed program. Fall
   // back to checking inner CPIs in case the entry point was a wrapper.
