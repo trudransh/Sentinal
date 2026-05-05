@@ -42,26 +42,45 @@ export function createPolicyFetcher(opts: PolicyFetchOptions): PolicyFetcher {
   );
 
   let cache: CacheEntry | null = null;
-  let logsSubId: number | null = null;
+  let accountSubId: number | null = null;
+  // HARDEN: if WS subscription fails, force ttl=0 so every signing call hits
+  // RPC. Better to be slow than to honour a stale cache after `update_policy`.
+  let effectiveTtl = ttl;
 
+  // HARDEN: subscribe to PDA account changes, not program logs. Logs are
+  // emitted on every tx that touches the program (and a substring match on
+  // log lines is forgeable with a memo or a CPI that just reads the PDA).
+  // `onAccountChange` only fires when the account's data actually changes.
   try {
-    logsSubId = opts.connection.onLogs(opts.programId, (logs) => {
-      if (logs.logs.some((l) => l.includes(pda.toBase58()))) {
+    accountSubId = opts.connection.onAccountChange(
+      pda,
+      () => {
         cache = null;
-      }
-    });
+      },
+      "confirmed",
+    );
   } catch {
-    logsSubId = null;
+    accountSubId = null;
+    effectiveTtl = 0;
   }
 
   return {
     async ensureMatch(localPolicy: Policy): Promise<void> {
-      if (!cache || now() - cache.fetchedAt >= ttl) {
+      if (!cache || now() - cache.fetchedAt >= effectiveTtl) {
         const record = await fetchSafely(opts, pda);
         if (!record) {
           throw new SentinelError(
             "POLICY_NOT_FOUND",
             `On-chain PolicyRecord not found for agent ${opts.agent.toBase58()}`,
+          );
+        }
+        // HARDEN: cross-check the on-chain `agent` field — a hash collision
+        // is computationally infeasible but a misdirected PDA (e.g. wrong
+        // programId env) would silently sign with the wrong policy.
+        if (!record.agent.equals(opts.agent)) {
+          throw new SentinelError(
+            "REGISTRY_FETCH_FAILED",
+            `On-chain PolicyRecord agent ${record.agent.toBase58()} does not match expected ${opts.agent.toBase58()}`,
           );
         }
         cache = {
@@ -75,10 +94,15 @@ export function createPolicyFetcher(opts: PolicyFetchOptions): PolicyFetcher {
       }
       const localHex = policyRootHex(localPolicy);
       if (localHex !== cache.rootHex) {
+        // HARDEN: don't echo the on-chain root back in error details —
+        // a malicious agent in the same trust domain otherwise gets a free
+        // confirmation oracle for "is this YAML candidate the deployed one?"
+        // localHex stays in the error message because the agent already
+        // knows its own file's hash; that's not new information.
         throw new SentinelError(
           "POLICY_MISMATCH",
-          `Local policy root differs from on-chain root`,
-          { local: localHex, onChain: cache.rootHex },
+          `Local policy root ${localHex} does not match on-chain root`,
+          { localHex },
         );
       }
     },
@@ -86,9 +110,9 @@ export function createPolicyFetcher(opts: PolicyFetchOptions): PolicyFetcher {
       cache = null;
     },
     async close() {
-      if (logsSubId !== null) {
+      if (accountSubId !== null) {
         try {
-          await opts.connection.removeOnLogsListener(logsSubId);
+          await opts.connection.removeAccountChangeListener(accountSubId);
         } catch {
           /* ignore — best-effort cleanup */
         }

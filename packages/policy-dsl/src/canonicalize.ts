@@ -3,8 +3,14 @@ import stringify from "json-stable-stringify";
 import { parsePolicy, type Policy } from "./schema.js";
 
 export function canonicalJson(policy: Policy): string {
-  parsePolicy(policy);
-  const out = stringify(policy as unknown as Record<string, unknown>, { space: "" });
+  // HARDEN: stringify the *parsed* policy, not the input. With strict zod
+  // today this is identical, but if anyone loosens schemas to .passthrough()
+  // the canonical bytes would otherwise include extra fields that the
+  // signing path doesn't see — a hash drift bug waiting to happen.
+  const validated = parsePolicy(policy);
+  const out = stringify(validated as unknown as Record<string, unknown>, {
+    space: "",
+  });
   if (out === undefined) {
     throw new Error("canonicalJson: stringify returned undefined");
   }

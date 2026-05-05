@@ -31,6 +31,15 @@ export interface ParseEnv {
   agent: string;
   now?: number;
   usdcMints?: ReadonlyArray<string>;
+  /**
+   * Programs that are explicitly allowed beyond System + SPL Token v1.
+   * - `undefined`: strict deny — any other program throws `UNSUPPORTED_TX`.
+   * - empty array: same as undefined (strict deny).
+   * - non-empty array: programs in this list emit a zero-amount summary so
+   *   the engine can apply other rules (allowlist, denylist, escalate_above)
+   *   against the destination key.
+   */
+  programsAllow?: ReadonlyArray<string>;
 }
 
 export async function parseTx(tx: Transaction, env: ParseEnv): Promise<TxSummary[]> {
@@ -66,6 +75,20 @@ export async function parseTx(tx: Transaction, env: ParseEnv): Promise<TxSummary
     if (ix.programId.equals(TOKEN_PROGRAM_ID)) {
       out.push(await parseTokenIx(ix, env, programId, now, usdcMints));
       continue;
+    }
+
+    // HARDEN: deny-by-default for unknown programs. Without this, a malicious
+    // agent can ship an instruction targeting an unknown program (e.g. one
+    // that internally CPIs into System.transfer) and the engine sees a $0,
+    // unknown-token summary that no rule fires on → silently allows.
+    // Operators who need to permit Jupiter / Marinade / etc. set
+    // `policy.programs.allow`, which the signer threads in here.
+    const allowed = env.programsAllow ?? [];
+    if (!allowed.includes(programId)) {
+      throw new SentinelError(
+        "UNSUPPORTED_TX",
+        `program ${programId} not in policy.programs.allow — refusing to sign`,
+      );
     }
 
     out.push({

@@ -15,7 +15,11 @@
     "probe:x402-live": "tsx scripts/probes/x402-live.ts",
     "probe:restart-a2": "bash scripts/probes/restart-a2.sh",
     "probe:shutdown-a2": "bash scripts/probes/shutdown-a2.sh",
-    "fire:register-policy": "tsx scripts/probes/fire-register-policy.ts"
+    "fire:register-policy": "tsx scripts/probes/fire-register-policy.ts",
+    "probe:zerion": "bash scripts/probes/zerion-capture-ctx.sh",
+    "probe:zerion:swap-global": "SENTINEL_A5_SCENARIO=swap-only SENTINEL_PROBE_DUMP=/tmp/sentinel-zerion-ctx-swap.json ZERION_GLOBAL=1 SENTINEL_A5_GLOBAL_CONFIRM=1 bash scripts/probes/zerion-capture-ctx.sh",
+    "audit:check": "pnpm audit --audit-level high",
+    "verify": "pnpm -r typecheck && pnpm -r test"
   },
   "packageManager": "pnpm@10.20.0",
   "engines": {

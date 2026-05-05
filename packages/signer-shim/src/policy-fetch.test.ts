@@ -7,11 +7,18 @@ import { SentinelError } from "./errors.js";
 const PROGRAM_ID = new PublicKey("2fQyCvg9MgiribMmXbXwn4oq587Kqo3cNGCh4x7BRVCk");
 
 function fakeConnection() {
+  // HARDEN: policy-fetch now subscribes via onAccountChange (account-data
+  // change is a strict signal — log-substring match was forgeable). The
+  // fake captures the change callback so tests can fire it manually.
+  const captured: { changeCb: (() => void) | null } = { changeCb: null };
   const conn = {
-    onLogs: vi.fn(() => 1),
-    removeOnLogsListener: vi.fn(async () => {}),
+    onAccountChange: vi.fn((_pda: unknown, cb: () => void) => {
+      captured.changeCb = cb;
+      return 7;
+    }),
+    removeAccountChangeListener: vi.fn(async () => {}),
   };
-  return conn;
+  return Object.assign(conn, { __captured: captured });
 }
 
 function policy(agentB58: string): Policy {
@@ -123,6 +130,88 @@ describe("policy-fetch", () => {
     await fetcher.ensureMatch(p);
     await fetcher.ensureMatch(p);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
+    await fetcher.close();
+  });
+
+  it("invalidates cache when onAccountChange fires (real on-chain update)", async () => {
+    const agent = Keypair.generate().publicKey;
+    const p = policy(agent.toBase58());
+    const onChain: OnChainPolicyRecord = {
+      owner: Keypair.generate().publicKey,
+      agent,
+      root: Array.from(policyRoot(p)),
+      version: 1,
+      revoked: false,
+    };
+    const fetchSpy = vi.fn(async () => onChain);
+    const conn = fakeConnection();
+    const fetcher = createPolicyFetcher({
+      connection: conn as never,
+      programId: PROGRAM_ID,
+      agent,
+      fetchAccount: fetchSpy,
+      cacheTtlMs: 60_000,
+      now: () => 1_000_000,
+    });
+    await fetcher.ensureMatch(p);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    // Simulate Helius/RPC saying the PDA changed → cache must drop.
+    conn.__captured.changeCb!();
+    await fetcher.ensureMatch(p);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    await fetcher.close();
+  });
+
+  it("forces ttl=0 when onAccountChange subscription fails", async () => {
+    const agent = Keypair.generate().publicKey;
+    const p = policy(agent.toBase58());
+    const onChain: OnChainPolicyRecord = {
+      owner: Keypair.generate().publicKey,
+      agent,
+      root: Array.from(policyRoot(p)),
+      version: 1,
+      revoked: false,
+    };
+    const fetchSpy = vi.fn(async () => onChain);
+    const fetcher = createPolicyFetcher({
+      connection: {
+        onAccountChange: () => {
+          throw new Error("WS unavailable");
+        },
+        removeAccountChangeListener: async () => {},
+      } as never,
+      programId: PROGRAM_ID,
+      agent,
+      fetchAccount: fetchSpy,
+      cacheTtlMs: 60_000,
+      now: () => 1_000_000,
+    });
+    await fetcher.ensureMatch(p);
+    await fetcher.ensureMatch(p);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    await fetcher.close();
+  });
+
+  it("rejects on-chain agent mismatch with REGISTRY_FETCH_FAILED", async () => {
+    const expected = Keypair.generate().publicKey;
+    const wrong = Keypair.generate().publicKey;
+    const p = policy(expected.toBase58());
+    const onChain: OnChainPolicyRecord = {
+      owner: Keypair.generate().publicKey,
+      agent: wrong,
+      root: Array.from(policyRoot(p)),
+      version: 1,
+      revoked: false,
+    };
+    const fetcher = createPolicyFetcher({
+      connection: fakeConnection() as never,
+      programId: PROGRAM_ID,
+      agent: expected,
+      fetchAccount: async () => onChain,
+    });
+    await expect(fetcher.ensureMatch(p)).rejects.toMatchObject({
+      code: "REGISTRY_FETCH_FAILED",
+    });
     await fetcher.close();
   });
 

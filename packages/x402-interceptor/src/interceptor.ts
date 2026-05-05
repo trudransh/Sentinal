@@ -92,13 +92,29 @@ export function createSentinelFetch(opts: SentinelFetchOptions): typeof fetch {
   return wrapped;
 }
 
+// Safety bound on header value size to defend against unbounded JSON.parse.
+const MAX_REQUIREMENTS_HEADER_BYTES = 4 * 1024;
+
 export function parseRequirements(headerValue: string): PaymentRequirements {
-  const parsed = JSON.parse(headerValue) as Partial<PaymentRequirements> & {
-    token?: unknown;
-    amount?: unknown;
-  };
+  if (typeof headerValue !== "string" || headerValue.length === 0) {
+    throw new Error("x402: empty X-PAYMENT-REQUIREMENTS header");
+  }
+  if (headerValue.length > MAX_REQUIREMENTS_HEADER_BYTES) {
+    throw new Error("x402: X-PAYMENT-REQUIREMENTS exceeds size cap");
+  }
+  let parsed: Partial<PaymentRequirements> & { token?: unknown; amount?: unknown };
+  try {
+    parsed = JSON.parse(headerValue) as typeof parsed;
+  } catch {
+    throw new Error("x402: X-PAYMENT-REQUIREMENTS is not valid JSON");
+  }
+  if (parsed === null || typeof parsed !== "object") {
+    throw new Error("x402: X-PAYMENT-REQUIREMENTS is not an object");
+  }
   if (
     typeof parsed.amount !== "number" ||
+    !Number.isFinite(parsed.amount) ||
+    parsed.amount < 0 ||
     typeof parsed.payTo !== "string" ||
     typeof parsed.resourceUrl !== "string" ||
     typeof parsed.network !== "string" ||

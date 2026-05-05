@@ -1,11 +1,13 @@
 import { describe, expect, it, beforeAll } from "vitest";
 import { classifyTx, type HeliusEnhancedTx } from "./helius";
 
-// Configure decoder for the deployed devnet program before importing the module.
-// Vitest doesn't isolate process.env per file; this is set once for the suite.
+// Configure decoder for the deployed devnet program. helius.ts now reads the
+// env var lazily inside `findSentinelInstruction`, so setting it before each
+// run is enough — no module-load timing dependency.
 beforeAll(() => {
-  process.env.SENTINEL_PROGRAM_ID =
-    process.env.SENTINEL_PROGRAM_ID ?? "2fQyCvg9MgiribMmXbXwn4oq587Kqo3cNGCh4x7BRVCk";
+  process.env.SENTINEL_REGISTRY_PROGRAM_ID =
+    process.env.SENTINEL_REGISTRY_PROGRAM_ID ??
+    "2fQyCvg9MgiribMmXbXwn4oq587Kqo3cNGCh4x7BRVCk";
 });
 
 // Captured 2026-04-28T16:54:49Z from a real register_policy devnet tx.
@@ -96,5 +98,38 @@ describe("classifyTx (C3)", () => {
     };
     expect(() => classifyTx(bad)).not.toThrow();
     expect(classifyTx(bad).kind).toBe("unknown");
+  });
+
+  it("returns unknown when instructions field is missing or empty", () => {
+    expect(classifyTx({ signature: "x" }).kind).toBe("unknown");
+    expect(classifyTx({ signature: "x", instructions: [] }).kind).toBe("unknown");
+  });
+
+  it("does not throw on missing accounts/data on the matching ix", () => {
+    const ix: HeliusEnhancedTx = {
+      signature: "x",
+      instructions: [
+        {
+          programId: "2fQyCvg9MgiribMmXbXwn4oq587Kqo3cNGCh4x7BRVCk",
+          // both `data` and `accounts` absent
+        },
+      ],
+    };
+    expect(() => classifyTx(ix)).not.toThrow();
+    expect(classifyTx(ix).kind).toBe("unknown");
+  });
+
+  it("returns unknown when data decodes to fewer than 8 bytes", () => {
+    const ix: HeliusEnhancedTx = {
+      signature: "x",
+      instructions: [
+        {
+          programId: "2fQyCvg9MgiribMmXbXwn4oq587Kqo3cNGCh4x7BRVCk",
+          data: "1", // single byte
+          accounts: ["a", "b"],
+        },
+      ],
+    };
+    expect(classifyTx(ix).kind).toBe("unknown");
   });
 });

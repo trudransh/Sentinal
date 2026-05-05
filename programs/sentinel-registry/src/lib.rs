@@ -119,11 +119,15 @@ pub struct UpdatePolicy<'info> {
 #[derive(Accounts)]
 pub struct RevokePolicy<'info> {
     pub owner: Signer<'info>,
+    // HARDEN: refuse re-revoke. Without this constraint, a revoked policy
+    // could be revoked again indefinitely, emitting redundant
+    // PolicyRevoked events and polluting Helius webhook downstream state.
     #[account(
         mut,
         seeds = [b"policy", policy.agent.as_ref()],
         bump = policy.bump,
         has_one = owner @ SentinelError::Unauthorized,
+        constraint = !policy.revoked @ SentinelError::PolicyRevoked,
     )]
     pub policy: Account<'info, PolicyRecord>,
 }

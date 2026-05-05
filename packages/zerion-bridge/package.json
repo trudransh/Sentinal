@@ -22,6 +22,9 @@
     "@sentinel/signer-shim": "workspace:*",
     "@solana/web3.js": "^1.95.0"
   },
+  "optionalDependencies": {
+    "better-sqlite3": "^11.5.0"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "vitest": "^1.6.0",

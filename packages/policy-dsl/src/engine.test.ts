@@ -12,6 +12,7 @@ const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const SWAP_PROGRAM = "Swap1111111111111111111111111111111111111111";
 
 const NOW = 1_700_000_000_000;
+const USDC_DEV_MINT = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
 
 function tx(over: Partial<TxSummary> = {}): TxSummary {
   return {
@@ -222,6 +223,46 @@ describe("engine: 15 mandated fixtures", () => {
       policy: pol({}),
       tx: tx({ usdValue: 1_000_000 }),
       history: noopHistory,
+      now: NOW,
+    });
+    expect(v.type).toBe("allow");
+  });
+
+  // ── Production hardening additions ─────────────────────────────────────
+  it("evaluates mint-token caps (not just SOL/USDC literals)", () => {
+    const v = evaluate({
+      policy: pol({
+        caps: [{ token: { mint: USDC_DEV_MINT }, max_per_tx: 1 }],
+      }),
+      tx: tx({ token: { mint: USDC_DEV_MINT }, amount: 2 }),
+      history: noopHistory,
+      now: NOW,
+    });
+    expect(v.type).toBe("deny");
+    if (v.type === "deny") expect(v.reason).toMatch(/max_per_tx/);
+  });
+
+  it("cap deny takes precedence over rate-limit deny when both fire", () => {
+    // Same agent: spent 0.05 SOL today (full max_per_day), rate window full.
+    // The cap-deny reason must surface (it's the more semantically meaningful one).
+    const v = evaluate({
+      policy: pol({
+        caps: [{ token: "SOL", max_per_day: 0.05 }],
+        rate_limit: { max_tx_per_minute: 1 },
+      }),
+      tx: tx({ amount: 0.1 }),
+      history: fixedHistory({ SOL: 0.05 }, 5),
+      now: NOW,
+    });
+    expect(v.type).toBe("deny");
+    if (v.type === "deny") expect(v.reason).toMatch(/max_per_day/);
+  });
+
+  it("exact-cap boundary: spent == max_per_day, tx amount 0 → allow", () => {
+    const v = evaluate({
+      policy: pol({ caps: [{ token: "USDC", max_per_day: 50 }] }),
+      tx: tx({ token: "USDC", amount: 0, usdValue: 0 }),
+      history: fixedHistory({ USDC: 50 }),
       now: NOW,
     });
     expect(v.type).toBe("allow");

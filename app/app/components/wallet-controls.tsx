@@ -14,20 +14,27 @@ export default function WalletControls() {
       {connected && publicKey ? (
         <span
           style={{
-            fontSize: "0.7rem",
-            opacity: 0.6,
-            fontFamily: "inherit",
+            fontSize: "0.68rem",
+            color: "var(--text-muted)",
+            fontFamily: "var(--font-mono)",
           }}
           title={publicKey.toBase58()}
         >
           owner: {short(publicKey.toBase58())}
         </span>
       ) : (
-        <span style={{ fontSize: "0.7rem", opacity: 0.5 }}>
-          [DEMO MODE — connect a Ledger-backed wallet for production]
+        <span style={{
+          fontSize: "0.68rem",
+          color: "var(--accent-yellow)",
+          background: "var(--accent-yellow-dim)",
+          padding: "0.15rem 0.5rem",
+          borderRadius: "9999px",
+          border: "1px solid rgba(251, 191, 36, 0.2)",
+        }}>
+          DEMO MODE
         </span>
       )}
-      <WalletMultiButton style={{ fontSize: "0.8rem", height: "2rem" }} />
+      <WalletMultiButton />
     </div>
   );
 }

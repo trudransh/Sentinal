@@ -15,6 +15,10 @@ CREATE TABLE IF NOT EXISTS policy_events (
 );
 CREATE INDEX IF NOT EXISTS idx_events_received ON policy_events (received_at);
 CREATE INDEX IF NOT EXISTS idx_events_agent ON policy_events (agent);
+-- HARDEN-3: replay dedupe via UNIQUE(signature). NULL signatures (manual
+-- inserts pre-Helius integration) are allowed because SQLite treats every
+-- NULL as distinct.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_events_signature ON policy_events (signature) WHERE signature IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS escalations (
   id TEXT PRIMARY KEY,
