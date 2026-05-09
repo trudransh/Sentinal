@@ -6,6 +6,7 @@ import BalanceWidget from "./components/balance-widget";
 import AgentSpendChart from "./components/agent-spend-chart";
 import WalletControls from "./components/wallet-controls";
 import EscalationApprover from "./components/escalation-approver";
+import SquadsConnect from "./components/squads-connect";
 
 const DEFAULT_AGENT =
   process.env.NEXT_PUBLIC_DEMO_AGENT ?? "AGENTPubKEy11111111111111111111111111111111";
@@ -30,6 +31,11 @@ export default function Page() {
       </header>
 
       <EscalationApprover programId={process.env.SENTINEL_REGISTRY_PROGRAM_ID} />
+
+      <SquadsConnect
+        programId={process.env.SENTINEL_REGISTRY_PROGRAM_ID}
+        defaultAgent={DEFAULT_AGENT}
+      />
 
       <div className="dashboard-grid">
         {/* Row 1: Balance + Spend side by side */}

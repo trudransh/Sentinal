@@ -25,3 +25,4 @@ docs/submission-checklist.md
 .claude-flow/
 .claude/
 CHANGELOG.md
+.colosseum.env

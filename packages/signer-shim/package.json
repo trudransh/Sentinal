@@ -19,6 +19,7 @@
     "@sentinel/policy-dsl": "workspace:*",
     "@solana/spl-token": "^0.4.0",
     "@solana/web3.js": "^1.95.0",
+    "@sqds/multisig": "^2.1.4",
     "better-sqlite3": "^11.5.0",
     "pino": "^9.0.0",
     "yaml": "^2.5.0",
