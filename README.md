@@ -379,39 +379,39 @@ The dashboard's **Squads multisig owner** card does all of this through Phantom 
 
 ```
                     ┌─────────────────────────────────────┐
-                    │         Agent logic (any LLM)        │
+                    │         Agent logic (any LLM)       │
                     └──────────────┬──────────────────────┘
                                    │ creates tx
                     ┌──────────────▼──────────────────────┐
-                    │         SentinelSigner (shim)        │
-                    │  1. parse tx instructions            │
-                    │  2. evaluate against local YAML      │
-                    │  3. check Pyth USD price             │
-                    │  4. fetch on-chain root (PDA)        │
-                    │  5. compare local root == on-chain   │
-                    │  6. sign iff everything passes       │
+                    │         SentinelSigner (shim)       │
+                    │  1. parse tx instructions           │
+                    │  2. evaluate against local YAML     │
+                    │  3. check Pyth USD price            │
+                    │  4. fetch on-chain root (PDA)       │
+                    │  5. compare local root == on-chain  │
+                    │  6. sign iff everything passes      │
                     └──────┬───────────────────┬──────────┘
                            │ passes            │ fails
-               ┌───────────▼────┐    ┌─────────▼──────────┐
-               │  Solana network │    │  escalation queue  │
-               └────────────────┘    │  (SQLite → SSE →   │
-                                      │   dashboard →      │
-                                      │   human approve)   │
-                                      └────────────────────┘
+               ┌───────────▼────┐    ┌─────────▼─────────┐
+               │  Solana network│    │  escalation queue │
+               └────────────────┘    │ (SQLite → SSE →   │
+                                     │   dashboard →     │
+                                     │   human approve)  │
+                                     └───────────────────┘
 
                     ┌─────────────────────────────────────┐
-                    │       Sentinel Registry (Anchor)     │
-                    │  PDA: [policy, agent_pubkey]         │
-                    │  Fields: owner, root, version,       │
-                    │          revoked, created_at         │
-                    │  Events: PolicyRegistered,           │
-                    │          PolicyUpdated, Revoked       │
+                    │       Sentinel Registry (Anchor)    │
+                    │  PDA: [policy, agent_pubkey]        │
+                    │  Fields: owner, root, version,      │
+                    │          revoked, created_at        │
+                    │  Events: PolicyRegistered,          │
+                    │          PolicyUpdated, Revoked     │
                     └──────────────┬──────────────────────┘
                                    │ on-chain root
                     ┌──────────────▼──────────────────────┐
-                    │     Squads (optional governance)     │
-                    │  vault PDA as owner → threshold      │
-                    │  approvals for update_policy         │
+                    │     Squads (optional governance)    │
+                    │  vault PDA as owner → threshold     │
+                    │  approvals for update_policy        │
                     └─────────────────────────────────────┘
 ```
 

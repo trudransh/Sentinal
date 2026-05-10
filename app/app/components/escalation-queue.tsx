@@ -44,9 +44,13 @@ export default function EscalationQueue() {
   async function decide(id: string, action: "approve" | "reject") {
     setBusy(id);
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const token = process.env.NEXT_PUBLIC_SENTINEL_DASHBOARD_TOKEN;
+      if (token) headers["x-sentinel-token"] = token;
+
       const r = await fetch("/api/escalations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ id, action }),
       });
       if (!r.ok) {
