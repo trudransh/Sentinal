@@ -4,57 +4,46 @@ import EscalationQueue from "./components/escalation-queue";
 import PolicyEditor from "./components/policy-editor";
 import BalanceWidget from "./components/balance-widget";
 import AgentSpendChart from "./components/agent-spend-chart";
-import WalletControls from "./components/wallet-controls";
 import EscalationApprover from "./components/escalation-approver";
 import SquadsConnect from "./components/squads-connect";
+import AppShell from "./components/app-shell";
 
 const DEFAULT_AGENT =
   process.env.NEXT_PUBLIC_DEMO_AGENT ?? "AGENTPubKEy11111111111111111111111111111111";
 
 export default function Page() {
   return (
-    <main className="sentinel-main">
+    <AppShell defaultAgent={DEFAULT_AGENT}>
       <header className="sentinel-header">
-        <div className="sentinel-logo">
-          <div className="sentinel-logo-icon">S</div>
-          <div>
-            <h1>Sentinel</h1>
-            <p className="tagline">
-              Programmable transaction firewall for autonomous Solana agents
-            </p>
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <span className="network-badge">⬡ devnet</span>
-          <WalletControls />
+        <div>
+          <h1>
+            Agent treasury <span className="gradient-text">overview</span>
+          </h1>
+          <p className="tagline">
+            Programmable policy primitive · live on Solana devnet
+          </p>
         </div>
       </header>
 
       <EscalationApprover programId={process.env.SENTINEL_REGISTRY_PROGRAM_ID} />
 
-      <SquadsConnect
-        programId={process.env.SENTINEL_REGISTRY_PROGRAM_ID}
-        defaultAgent={DEFAULT_AGENT}
-      />
-
       <div className="dashboard-grid">
-        {/* Row 1: Balance + Spend side by side */}
-        <section className="card">
+        <section className="card" id="dashboard">
           <h2 className="card-header">
             <span className="dot" />
-            Wallet Balance
+            Wallet balance
             <span style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: "0.65rem", color: "var(--text-muted)" }}>
               {short(DEFAULT_AGENT)}
             </span>
           </h2>
-          <Suspense fallback={<div style={{ opacity: 0.4, fontSize: "0.8rem" }}>loading…</div>}>
+          <Suspense fallback={<BalanceSkeleton />}>
             <BalanceWidget address={DEFAULT_AGENT} />
           </Suspense>
         </section>
 
         <section className="card">
           <h2 className="card-header">
-            Agent Spend
+            Agent spend
             <span style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: "0.65rem", color: "var(--text-muted)" }}>
               7d window
             </span>
@@ -62,34 +51,51 @@ export default function Page() {
           <AgentSpendChart address={DEFAULT_AGENT} />
         </section>
 
-        {/* Row 2: Live Activity — full width */}
-        <section className="card span-full">
+        <section className="card span-full" id="activity">
           <h2 className="card-header">
             <span className="dot" />
-            Live Activity
+            Live activity
           </h2>
           <LiveActivity />
         </section>
 
-        {/* Row 3: Escalations + Policy Editor side by side */}
         <section className="card">
-          <h2 className="card-header">
-            Escalation Queue
-          </h2>
+          <h2 className="card-header">Escalation queue</h2>
           <EscalationQueue />
         </section>
 
-        <section className="card">
-          <h2 className="card-header">
-            Policy Editor
-          </h2>
+        <section className="card" id="policies">
+          <h2 className="card-header">Policy editor</h2>
           <PolicyEditor />
         </section>
+
+        <section className="card span-full">
+          <h2 className="card-header">
+            Squads multisig owner
+            <span style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: "0.65rem", color: "var(--text-muted)" }}>
+              policy.owner = vault PDA
+            </span>
+          </h2>
+          <SquadsConnect
+            programId={process.env.SENTINEL_REGISTRY_PROGRAM_ID}
+            defaultAgent={DEFAULT_AGENT}
+          />
+        </section>
       </div>
-    </main>
+    </AppShell>
   );
 }
 
-function short(s: string) {
-  return s.length > 10 ? `${s.slice(0, 4)}…${s.slice(-4)}` : s;
+function BalanceSkeleton() {
+  return (
+    <div className="skeleton-stack">
+      <div className="skeleton skeleton-row med" />
+      <div className="skeleton skeleton-row" />
+      <div className="skeleton skeleton-row short" />
+    </div>
+  );
+}
+
+function short(s: string): string {
+  return s.length > 12 ? `${s.slice(0, 6)}…${s.slice(-4)}` : s;
 }

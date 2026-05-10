@@ -5,7 +5,14 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./squads-owner": {
+      "types": "./dist/squads-owner.d.ts",
+      "default": "./dist/squads-owner.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

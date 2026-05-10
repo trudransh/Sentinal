@@ -11,7 +11,7 @@ import {
   findPolicyPda,
   getSentinelVaultPda,
   type MultisigSnapshot,
-} from "@sentinel/signer-shim";
+} from "@sentinel/signer-shim/squads-owner";
 
 // Phase 7 — compose Sentinel with Squads. The connected wallet member proposes
 // an `update_policy` ix as a Squads vault transaction; threshold-many members
@@ -220,79 +220,154 @@ export default function SquadsConnect({ programId, defaultAgent }: SquadsConnect
   }, [programPk, agentInput]);
 
   return (
-    <section className="card" style={{ marginTop: "1rem" }}>
-      <h2 className="card-header">
-        Squads multisig owner
-        <span
-          style={{
-            marginLeft: "auto",
-            fontFamily: "var(--font-mono)",
-            fontWeight: 400,
-            textTransform: "none",
-            fontSize: "0.65rem",
-            color: "var(--text-muted)",
-          }}
-        >
-          policy.owner = vault PDA
-        </span>
-      </h2>
+    <div>
       <p
         style={{
-          margin: "0 0 0.75rem 0",
+          margin: "0 0 0.85rem 0",
           fontSize: "0.78rem",
           color: "var(--text-secondary)",
+          lineHeight: 1.55,
         }}
       >
-        When the policy <code style={{ color: "var(--accent-blue)" }}>owner</code>{" "}
+        When <code style={{ color: "var(--accent-blue)" }}>policy.owner</code>{" "}
         is a Squads vault PDA, every <code>update_policy</code> requires
         threshold-many member approvals. Sentinel itself doesn&apos;t change —{" "}
-        <code>has_one = owner</code> just resolves the multisig vault.
+        <code>has_one = owner</code> resolves the multisig vault directly.
       </p>
 
-      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: "0.5rem",
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
         <input
           className="input"
           placeholder="multisig PDA (base58)"
           value={multisigInput}
           onChange={(e) => setMultisigInput(e.target.value.trim())}
-          style={{ flex: "1 1 280px", fontFamily: "var(--font-mono)", fontSize: "0.78rem" }}
+          style={{
+            flex: "1 1 280px",
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.78rem",
+          }}
         />
-        <button onClick={loadMultisig} disabled={!multisigPk} className="btn btn-ghost">
-          load
+        <button
+          onClick={loadMultisig}
+          disabled={!multisigPk}
+          className="btn btn-ghost"
+        >
+          load multisig
         </button>
       </div>
 
       {snapshot && (
         <div
           style={{
-            marginTop: "0.75rem",
-            padding: "0.75rem",
-            background: "var(--surface-2)",
+            marginTop: "0.85rem",
+            padding: "0.9rem",
+            background: "var(--bg-input)",
+            border: "1px solid var(--border-subtle)",
             borderRadius: "var(--radius-md)",
-            fontSize: "0.72rem",
-            fontFamily: "var(--font-mono)",
-            color: "var(--text-secondary)",
-            display: "grid",
-            gridTemplateColumns: "max-content 1fr",
-            gap: "0.25rem 0.75rem",
           }}
         >
-          <span>vault PDA</span>
-          <span style={{ color: "var(--text-primary)", wordBreak: "break-all" }}>
-            {snapshot.vaultPda.toBase58()}
-          </span>
-          <span>threshold</span>
-          <span style={{ color: "var(--text-primary)" }}>
-            {snapshot.threshold} of {snapshot.members.length}
-          </span>
-          <span>tx index</span>
-          <span style={{ color: "var(--text-primary)" }}>
-            {snapshot.currentTransactionIndex.toString()}
-          </span>
-          <span>members</span>
-          <span style={{ color: "var(--text-primary)" }}>
-            {snapshot.members.map((m: PublicKey) => short(m.toBase58())).join(", ")}
-          </span>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.6rem",
+              marginBottom: "0.6rem",
+              flexWrap: "wrap",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "0.65rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                color: "var(--text-muted)",
+              }}
+            >
+              threshold
+            </span>
+            <span
+              style={{
+                fontSize: "0.95rem",
+                color: "var(--text-primary)",
+                fontFamily: "var(--font-mono)",
+                fontWeight: 600,
+              }}
+            >
+              {snapshot.threshold} of {snapshot.members.length}
+            </span>
+            <span style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>
+              · tx index{" "}
+              <code style={{ color: "var(--text-secondary)" }}>
+                {snapshot.currentTransactionIndex.toString()}
+              </code>
+            </span>
+          </div>
+          <div className="threshold-bar" aria-hidden>
+            <div
+              className="threshold-fill"
+              style={{
+                width: `${
+                  (snapshot.threshold / Math.max(1, snapshot.members.length)) *
+                  100
+                }%`,
+              }}
+            />
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "0.35rem",
+              marginTop: "0.85rem",
+            }}
+          >
+            {snapshot.members.map((m: PublicKey) => {
+              const isYou = !!publicKey && m.equals(publicKey);
+              const initial = m.toBase58().slice(0, 1).toUpperCase();
+              return (
+                <span
+                  key={m.toBase58()}
+                  className={`member-chip ${isYou ? "you" : ""}`}
+                  title={m.toBase58()}
+                >
+                  <span className="member-avatar">{initial}</span>
+                  {short(m.toBase58())}
+                  {isYou && (
+                    <span
+                      style={{
+                        fontSize: "0.55rem",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                      }}
+                    >
+                      you
+                    </span>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+
+          <div
+            style={{
+              marginTop: "0.85rem",
+              fontSize: "0.68rem",
+              fontFamily: "var(--font-mono)",
+              color: "var(--text-muted)",
+              wordBreak: "break-all",
+            }}
+            title={snapshot.vaultPda.toBase58()}
+          >
+            vault PDA: {snapshot.vaultPda.toBase58()}
+          </div>
         </div>
       )}
 
@@ -364,15 +439,23 @@ export default function SquadsConnect({ programId, defaultAgent }: SquadsConnect
       )}
 
       {busyMsg && (
-        <div style={{ marginTop: "0.5rem", color: "var(--accent-green)", fontSize: "0.75rem" }}>
+        <div
+          className="status-pill info"
+          style={{ marginTop: "0.85rem" }}
+        >
+          <span className="pill-dot" />
           {busyMsg}
         </div>
       )}
       {errorMsg && (
-        <div style={{ marginTop: "0.5rem", color: "var(--accent-red)", fontSize: "0.75rem" }}>
+        <div
+          className="status-pill deny"
+          style={{ marginTop: "0.85rem" }}
+        >
+          <span className="pill-dot" />
           {errorMsg}
         </div>
       )}
-    </section>
+    </div>
   );
 }

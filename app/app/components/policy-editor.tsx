@@ -18,13 +18,18 @@ rate_limit:
   max_tx_per_minute: 6
 `;
 
+type ValidationState =
+  | { kind: "idle" }
+  | { kind: "validating" }
+  | { kind: "ok"; rootHex: string }
+  | { kind: "err"; error: string };
+
 export default function PolicyEditor() {
   const [yaml, setYaml] = useState<string>(DEFAULT_YAML);
-  const [result, setResult] = useState<{ ok: true; rootHex: string } | { ok: false; error: string } | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [state, setState] = useState<ValidationState>({ kind: "idle" });
 
   async function validate() {
-    setBusy(true);
+    setState({ kind: "validating" });
     try {
       const r = await fetch("/api/policy", {
         method: "POST",
@@ -32,25 +37,51 @@ export default function PolicyEditor() {
         body: JSON.stringify({ yaml }),
       });
       const data = (await r.json()) as { rootHex?: string; error?: string };
-      if (r.ok && data.rootHex) setResult({ ok: true, rootHex: data.rootHex });
-      else setResult({ ok: false, error: data.error ?? `HTTP ${r.status}` });
-    } finally {
-      setBusy(false);
+      if (r.ok && data.rootHex) {
+        setState({ kind: "ok", rootHex: data.rootHex });
+      } else {
+        setState({ kind: "err", error: data.error ?? `HTTP ${r.status}` });
+      }
+    } catch (err) {
+      setState({
+        kind: "err",
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
+  }
+
+  function reset() {
+    setYaml(DEFAULT_YAML);
+    setState({ kind: "idle" });
+  }
+
+  function copyRoot() {
+    if (state.kind !== "ok") return;
+    navigator.clipboard.writeText(state.rootHex).catch(() => {});
   }
 
   return (
     <div>
-      <div style={{
-        height: 280,
-        border: "1px solid var(--border-subtle)",
-        borderRadius: "var(--radius-md)",
-        overflow: "hidden",
-      }}>
+      <div className="editor-toolbar">
+        <button
+          onClick={validate}
+          className="btn btn-primary"
+          disabled={state.kind === "validating"}
+        >
+          {state.kind === "validating" ? "validating…" : "validate"}
+        </button>
+        <button onClick={reset} className="btn btn-ghost">
+          reset
+        </button>
+        <div className="toolbar-spacer" />
+        <ValidationPill state={state} onCopy={copyRoot} />
+      </div>
+      <div className="editor-frame" style={{ height: 280 }}>
         <Monaco
           defaultLanguage="yaml"
           value={yaml}
           theme="vs-dark"
+          height="100%"
           options={{
             minimap: { enabled: false },
             fontSize: 12.5,
@@ -60,42 +91,70 @@ export default function PolicyEditor() {
             padding: { top: 8 },
             renderLineHighlight: "none",
           }}
-          onChange={(v) => setYaml(v ?? "")}
+          onChange={(v) => {
+            setYaml(v ?? "");
+            if (state.kind !== "idle") setState({ kind: "idle" });
+          }}
         />
       </div>
-      <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-        <button onClick={validate} disabled={busy} className="btn btn-primary">
-          validate + compute root
-        </button>
-        {result?.ok === true && (
-          <code style={{
-            fontSize: "0.72rem",
-            color: "var(--accent-green)",
-            fontFamily: "var(--font-mono)",
-            background: "var(--accent-green-dim)",
-            padding: "0.2rem 0.5rem",
-            borderRadius: "var(--radius-sm)",
-            border: "1px solid var(--accent-green-border)",
-          }}>
-            root: {result.rootHex.slice(0, 16)}…
-          </code>
-        )}
-        {result?.ok === false && (
-          <span style={{
-            fontSize: "0.72rem",
-            color: "var(--accent-red)",
-            background: "var(--accent-red-dim)",
-            padding: "0.2rem 0.5rem",
-            borderRadius: "var(--radius-sm)",
-            border: "1px solid var(--accent-red-border)",
-          }}>
-            {result.error}
-          </span>
-        )}
-      </div>
-      <div style={{ marginTop: "0.5rem", fontSize: "0.68rem", color: "var(--text-muted)" }}>
-        On-chain <code style={{ color: "var(--accent-blue)" }}>update_policy</code> is signed via the wallet flow above.
+      <div
+        style={{
+          marginTop: "0.6rem",
+          fontSize: "0.7rem",
+          color: "var(--text-muted)",
+        }}
+      >
+        On-chain <code style={{ color: "var(--accent-blue)" }}>update_policy</code>{" "}
+        is signed via the wallet flow above. Squads-multisig owners use the{" "}
+        <em style={{ fontStyle: "normal", color: "var(--text-secondary)" }}>
+          Squads multisig owner
+        </em>{" "}
+        card below.
       </div>
     </div>
+  );
+}
+
+function ValidationPill({
+  state,
+  onCopy,
+}: {
+  state: ValidationState;
+  onCopy: () => void;
+}) {
+  if (state.kind === "idle") {
+    return (
+      <span className="status-pill muted">
+        <span className="pill-dot" />
+        unsaved
+      </span>
+    );
+  }
+  if (state.kind === "validating") {
+    return (
+      <span className="status-pill info">
+        <span className="pill-dot" />
+        validating
+      </span>
+    );
+  }
+  if (state.kind === "ok") {
+    return (
+      <button
+        onClick={onCopy}
+        className="status-pill allow"
+        title="click to copy"
+        style={{ cursor: "pointer", border: "none" }}
+      >
+        <span className="pill-dot" />
+        root: {state.rootHex.slice(0, 8)}…{state.rootHex.slice(-4)}
+      </button>
+    );
+  }
+  return (
+    <span className="status-pill deny" title={state.error}>
+      <span className="pill-dot" />
+      {state.error.length > 32 ? `${state.error.slice(0, 32)}…` : state.error}
+    </span>
   );
 }
