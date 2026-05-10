@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { relativeTime, urgencyTier } from "../../lib/ui";
+import { ROTATE_POLICY_EVENT, type RotatePolicyEvent } from "./escalation-approver";
 
 interface Row {
   id: string;
@@ -15,6 +16,7 @@ interface Row {
 export default function EscalationQueue() {
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<{
     id: string;
     action: "approve" | "reject";
@@ -42,16 +44,39 @@ export default function EscalationQueue() {
   async function decide(id: string, action: "approve" | "reject") {
     setBusy(id);
     try {
-      await fetch("/api/escalations", {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const token = process.env.NEXT_PUBLIC_SENTINEL_DASHBOARD_TOKEN;
+      if (token) headers["x-sentinel-token"] = token;
+
+      const r = await fetch("/api/escalations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ id, action }),
       });
+      if (!r.ok) {
+        const body = (await r.json().catch(() => ({}))) as { message?: string };
+        const msg =
+          r.status === 401
+            ? "auth failed (401) — set SENTINEL_DASHBOARD_TOKEN + NEXT_PUBLIC_SENTINEL_DASHBOARD_TOKEN to the same value, or unset both in dev"
+            : body.message ?? `HTTP ${r.status}`;
+        setError(msg);
+        return;
+      }
+      setError(null);
       await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(null);
       setConfirming(null);
     }
+  }
+
+  function rotatePolicy(row: Row) {
+    // Hand off to EscalationApprover via a CustomEvent so we don't have to
+    // lift the on-chain modal state into the page.
+    const detail: RotatePolicyEvent = { id: row.id, agent: row.agent };
+    window.dispatchEvent(new CustomEvent(ROTATE_POLICY_EVENT, { detail }));
   }
 
   if (rows.length === 0) {
@@ -66,6 +91,33 @@ export default function EscalationQueue() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
+      {error && (
+        <div
+          className="status-pill deny"
+          style={{
+            padding: "0.55rem 0.75rem",
+            fontSize: "0.72rem",
+            alignItems: "flex-start",
+          }}
+        >
+          <span className="pill-dot" style={{ flexShrink: 0, marginTop: "0.15rem" }} />
+          <span style={{ wordBreak: "break-word", flex: 1 }}>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "inherit",
+              cursor: "pointer",
+              fontSize: "0.9rem",
+              padding: 0,
+              flexShrink: 0,
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
       {rows.map((row) => {
         const tier = urgencyTier(row.created_at);
         const tierLabel =
@@ -158,6 +210,15 @@ export default function EscalationQueue() {
                     className="btn btn-danger"
                   >
                     reject
+                  </button>
+                  <button
+                    onClick={() => rotatePolicy(row)}
+                    disabled={busy === row.id}
+                    className="btn btn-ghost"
+                    title="approve + sign update_policy on-chain (requires Phantom)"
+                    style={{ fontSize: "0.7rem" }}
+                  >
+                    rotate
                   </button>
                 </>
               )}

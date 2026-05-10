@@ -7,31 +7,30 @@ import {
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
-import ApprovalModal, { type PendingApproval } from "./approval-modal";
 
-interface EscalationRow {
-  id: string;
-  agent: string;
-  reason: string;
-  status: "pending" | "approved" | "rejected";
-  created_at: number;
-}
-
-// update_policy discriminator from target/idl/sentinel_registry.json
 const UPDATE_POLICY_DISCRIMINATOR = new Uint8Array([
   212, 245, 246, 7, 163, 151, 18, 57,
 ]);
 
-// HARDEN-7: dashboard token mirrors SENTINEL_DASHBOARD_TOKEN on the server.
-// In dev, NEXT_PUBLIC_SENTINEL_DASHBOARD_TOKEN can be left blank if the
-// server allows unauth dev mode; in prod, an unset token disables the
-// approval flow entirely (the server returns 401).
 const DASHBOARD_TOKEN = process.env.NEXT_PUBLIC_SENTINEL_DASHBOARD_TOKEN ?? "";
 
-// B1: subscribes to /api/escalations, mounts approval-modal for the first
-// pending row, and routes "approve_and_update" through the connected wallet.
-// The wallet signs an update_policy ix client-side (Phantom/Ledger), the
-// dashboard server is only responsible for the off-chain SQLite state change.
+// Custom event the EscalationQueue dispatches when the operator clicks
+// "rotate policy on-chain" on a row. Carries the row's id + agent.
+export interface RotatePolicyEvent {
+  id: string;
+  agent: string;
+}
+
+export const ROTATE_POLICY_EVENT = "sentinel:rotate-policy";
+
+// EscalationApprover is now a *non-blocking* component. It does NOT auto-pop
+// any modal on page load. It owns the on-chain `update_policy` flow and only
+// opens its YAML modal when explicitly invoked via a `sentinel:rotate-policy`
+// CustomEvent (dispatched by the inline EscalationQueue's "rotate" button).
+//
+// Approving/rejecting *off-chain* is fully handled by EscalationQueue. This
+// component only exists for the one privileged action: rotate the on-chain
+// policy root in the same step as approving the escalation.
 export default function EscalationApprover({
   programId,
 }: {
@@ -39,17 +38,12 @@ export default function EscalationApprover({
 }) {
   const { publicKey, signTransaction, connected } = useWallet();
   const { connection } = useConnection();
-  const [pending, setPending] = useState<EscalationRow[]>([]);
-  const [showUpdate, setShowUpdate] = useState(false);
-  // HARDEN-8: agent is bound to the escalation row, never typed by hand. The
-  // operator only ever fills in YAML — root is computed by the validate
-  // endpoint. This kills the confused-deputy attack where an attacker who
-  // could inject an escalation also chose what root the operator's wallet
-  // signed.
+
+  const [active, setActive] = useState<RotatePolicyEvent | null>(null);
   const [yamlInput, setYamlInput] = useState("");
   const [validatedRoot, setValidatedRoot] = useState<string | null>(null);
   const [busyMsg, setBusyMsg] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   const programPk = useMemo(() => {
     if (!programId) return null;
@@ -66,42 +60,29 @@ export default function EscalationApprover({
     return h;
   }, []);
 
-  const refresh = useCallback(async () => {
-    try {
-      const r = await fetch("/api/escalations", { cache: "no-store" });
-      if (!r.ok) return;
-      const data = (await r.json()) as { escalations: EscalationRow[] };
-      setPending(data.escalations ?? []);
-    } catch {
-      // Network blip — leave previous list in place; next tick retries.
+  // Listen for the custom event from EscalationQueue.
+  useEffect(() => {
+    function onRotate(e: Event) {
+      const detail = (e as CustomEvent<RotatePolicyEvent>).detail;
+      if (!detail) return;
+      setActive(detail);
+      setYamlInput("");
+      setValidatedRoot(null);
+      setUpdateError(null);
     }
+    window.addEventListener(ROTATE_POLICY_EVENT, onRotate);
+    return () => window.removeEventListener(ROTATE_POLICY_EVENT, onRotate);
   }, []);
 
-  useEffect(() => {
-    refresh();
-    const id = setInterval(refresh, 2000);
-    return () => clearInterval(id);
-  }, [refresh]);
-
-  const first = pending[0] ?? null;
-  const approval: PendingApproval | null = first
-    ? { id: first.id, agent: first.agent, reason: first.reason }
-    : null;
-
-  async function resolveOffChain(id: string, action: "approve" | "reject") {
-    const r = await fetch("/api/escalations", {
-      method: "POST",
-      headers: dashboardHeaders,
-      body: JSON.stringify({ id, action }),
-    });
-    if (!r.ok) {
-      setErrorMsg(`escalation ${action} failed (${r.status})`);
-    }
-    await refresh();
-  }
+  const close = useCallback(() => {
+    setActive(null);
+    setYamlInput("");
+    setValidatedRoot(null);
+    setUpdateError(null);
+  }, []);
 
   async function validateRoot() {
-    setErrorMsg(null);
+    setUpdateError(null);
     setValidatedRoot(null);
     try {
       const r = await fetch("/api/policy", {
@@ -111,51 +92,53 @@ export default function EscalationApprover({
       });
       const j = (await r.json()) as { rootHex?: string; error?: string };
       if (!r.ok || !j.rootHex) {
-        setErrorMsg(j.error ?? "policy validation failed");
+        setUpdateError(j.error ?? "policy validation failed");
         return;
       }
       setValidatedRoot(j.rootHex);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : String(err));
+      setUpdateError(err instanceof Error ? err.message : String(err));
     }
   }
 
-  async function approveAndUpdate(id: string, agentBase58: string) {
-    setErrorMsg(null);
+  async function approveAndUpdate() {
+    if (!active) return;
+    setUpdateError(null);
     if (!programPk) {
-      setErrorMsg("SENTINEL_REGISTRY_PROGRAM_ID is not set");
+      setUpdateError(
+        "SENTINEL_REGISTRY_PROGRAM_ID is not set — check your .env file.",
+      );
       return;
     }
     if (!connected || !publicKey || !signTransaction) {
-      setErrorMsg("connect a wallet first");
+      setUpdateError(
+        "No wallet connected. Click the wallet button in the sidebar to connect Phantom first.",
+      );
       return;
     }
     if (!validatedRoot) {
-      setErrorMsg("paste new policy YAML and click Validate first");
+      setUpdateError("Paste your new policy YAML and click 'validate' first.");
       return;
     }
 
     let agentPk: PublicKey;
     try {
-      agentPk = new PublicKey(agentBase58);
+      agentPk = new PublicKey(active.agent);
     } catch {
-      setErrorMsg(`escalation row's agent pubkey is invalid: ${agentBase58}`);
+      setUpdateError(`Agent pubkey is invalid: ${active.agent}`);
       return;
     }
 
     const rootBytes = new Uint8Array(
       validatedRoot.match(/.{2}/g)!.map((b) => parseInt(b, 16)),
     );
-
     const [policyPda] = PublicKey.findProgramAddressSync(
       [new TextEncoder().encode("policy"), agentPk.toBuffer()],
       programPk,
     );
-
     const data = new Uint8Array(8 + 32);
     data.set(UPDATE_POLICY_DISCRIMINATOR, 0);
     data.set(rootBytes, 8);
-
     const ix = new TransactionInstruction({
       programId: programPk,
       keys: [
@@ -165,165 +148,210 @@ export default function EscalationApprover({
       data: Buffer.from(data),
     });
 
-    setBusyMsg("requesting signature…");
+    setBusyMsg("requesting Phantom signature…");
     try {
       const tx = new Transaction().add(ix);
       tx.feePayer = publicKey;
-      tx.recentBlockhash = (await connection.getLatestBlockhash("confirmed")).blockhash;
+      tx.recentBlockhash = (
+        await connection.getLatestBlockhash("confirmed")
+      ).blockhash;
       const signed = await signTransaction(tx);
-      setBusyMsg("broadcasting…");
+      setBusyMsg("broadcasting to devnet…");
       const sig = await connection.sendRawTransaction(signed.serialize());
       setBusyMsg(`confirming ${sig.slice(0, 8)}…`);
       await connection.confirmTransaction(sig, "confirmed");
-      setBusyMsg(`confirmed ${sig}`);
+      setBusyMsg(`on-chain confirmed ✓ ${sig.slice(0, 8)}`);
       const r = await fetch("/api/escalations", {
         method: "POST",
         headers: dashboardHeaders,
-        body: JSON.stringify({ id, action: "approve_and_update" }),
+        body: JSON.stringify({ id: active.id, action: "approve_and_update" }),
       });
       if (!r.ok) {
-        setErrorMsg(`tx confirmed but server rejected resolve (${r.status})`);
+        setUpdateError(
+          `Transaction confirmed on-chain but server returned ${r.status} — escalation status may be stale.`,
+        );
+      } else {
+        close();
       }
-      setShowUpdate(false);
-      setYamlInput("");
-      setValidatedRoot(null);
-      await refresh();
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : String(err));
+      setUpdateError(err instanceof Error ? err.message : String(err));
     } finally {
-      setTimeout(() => setBusyMsg(null), 4000);
+      setTimeout(() => setBusyMsg(null), 6000);
     }
   }
 
-  const onResolved = async (id: string, action: "approve" | "reject") => {
-    if (action === "approve") {
-      // Open the on-chain update panel; off-chain "approve" without rotating
-      // the policy is rarely what the operator wants in production.
-      setShowUpdate(true);
-      return;
-    }
-    await resolveOffChain(id, action);
-  };
+  if (!active) return null;
 
   return (
-    <>
-      <ApprovalModal approval={approval} onResolved={onResolved} />
-      {showUpdate && approval && (
-        <div className="modal-overlay">
-          <div className="modal-card">
-            <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.1rem", fontWeight: 600 }}>
-              Approve &amp; update policy
-            </h3>
-            <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: "0.8rem" }}>
-              Wallet will sign an <code style={{ color: "var(--accent-blue)" }}>update_policy</code>
-              ix on devnet for the agent below. Paste the new policy YAML; the
-              server validates it and computes the canonical root — the operator
-              never types raw hex.
-            </p>
-            <div
-              style={{
-                marginTop: "0.75rem",
-                fontSize: "0.7rem",
-                color: "var(--text-secondary)",
-                fontFamily: "var(--font-mono, monospace)",
-              }}
-            >
-              agent (locked from row): {approval.agent}
-            </div>
-            <label
-              style={{
-                display: "block",
-                marginTop: "0.5rem",
-                fontSize: "0.72rem",
-                color: "var(--text-secondary)",
-              }}
-            >
-              new policy YAML
-              <textarea
-                value={yamlInput}
-                onChange={(e) => {
-                  setYamlInput(e.target.value);
-                  setValidatedRoot(null);
-                }}
-                rows={10}
-                placeholder="version: 1\nagent: ...\ncaps:\n  - { token: SOL, max_per_tx: 0.5 }\n"
-                className="input"
-                style={{ marginTop: "0.25rem", fontFamily: "var(--font-mono, monospace)" }}
-              />
-            </label>
-            {validatedRoot && (
-              <div
-                style={{
-                  marginTop: "0.5rem",
-                  fontSize: "0.7rem",
-                  color: "var(--accent-green)",
-                  fontFamily: "var(--font-mono, monospace)",
-                  wordBreak: "break-all",
-                }}
-              >
-                root: {validatedRoot}
-              </div>
-            )}
-            {errorMsg && (
-              <div
-                style={{
-                  marginTop: "0.5rem",
-                  color: "var(--accent-red)",
-                  fontSize: "0.75rem",
-                }}
-              >
-                {errorMsg}
-              </div>
-            )}
-            {busyMsg && (
-              <div
-                style={{
-                  marginTop: "0.5rem",
-                  color: "var(--accent-green)",
-                  fontSize: "0.75rem",
-                }}
-              >
-                {busyMsg}
-              </div>
-            )}
-            <div
-              style={{
-                marginTop: "1rem",
-                display: "flex",
-                gap: "0.5rem",
-                justifyContent: "flex-end",
-              }}
-            >
-              <button
-                onClick={() => {
-                  setShowUpdate(false);
-                  setYamlInput("");
-                  setValidatedRoot(null);
-                }}
-                className="btn btn-ghost"
-              >
-                cancel
-              </button>
-              <button
-                onClick={validateRoot}
-                disabled={!yamlInput || !!busyMsg}
-                className="btn btn-ghost"
-              >
-                validate
-              </button>
-              <button
-                onClick={() => approveAndUpdate(approval.id, approval.agent)}
-                disabled={!validatedRoot || !!busyMsg}
-                className="btn btn-primary"
-              >
-                sign &amp; broadcast
-              </button>
-            </div>
-          </div>
+    <div className="modal-overlay" onClick={close}>
+      <div
+        className="modal-card"
+        style={{ maxWidth: 540, width: "92vw" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            marginBottom: "0.75rem",
+          }}
+        >
+          <span className="status-pill escalate" style={{ fontSize: "0.6rem" }}>
+            <span className="pill-dot" />
+            approve + rotate policy
+          </span>
         </div>
-      )}
-    </>
+
+        <h3 style={{ margin: "0 0 0.4rem 0", fontSize: "1.05rem", fontWeight: 600 }}>
+          Approve &amp; rotate on-chain policy
+        </h3>
+        <p
+          style={{
+            margin: "0 0 0.75rem 0",
+            color: "var(--text-secondary)",
+            fontSize: "0.78rem",
+            lineHeight: 1.55,
+          }}
+        >
+          Clicking <strong>sign &amp; broadcast</strong> signs an{" "}
+          <code style={{ color: "var(--accent-blue)" }}>update_policy</code>{" "}
+          instruction on Solana devnet with your connected Phantom wallet. The
+          new policy YAML you paste here gets hashed to a 32-byte root — that
+          root is what goes on-chain, not the YAML itself.
+        </p>
+
+        <div
+          style={{
+            padding: "0.45rem 0.6rem",
+            borderRadius: "var(--radius-sm)",
+            border: "1px solid",
+            fontSize: "0.72rem",
+            marginBottom: "0.75rem",
+            borderColor: connected
+              ? "var(--accent-green-border)"
+              : "rgba(251,191,36,0.3)",
+            background: connected
+              ? "var(--accent-green-dim)"
+              : "var(--accent-yellow-dim)",
+            color: connected ? "var(--accent-green)" : "var(--accent-yellow)",
+          }}
+        >
+          {connected
+            ? `✓ Wallet connected: ${publicKey?.toBase58().slice(0, 8)}…`
+            : "⚠ No wallet connected — close this modal, click the wallet button in the sidebar, then re-open."}
+        </div>
+
+        <div
+          style={{
+            marginBottom: "0.5rem",
+            fontSize: "0.7rem",
+            fontFamily: "var(--font-mono)",
+            color: "var(--text-muted)",
+          }}
+        >
+          agent:{" "}
+          <span style={{ color: "var(--text-secondary)" }}>{active.agent}</span>
+        </div>
+
+        <label
+          style={{
+            display: "block",
+            fontSize: "0.72rem",
+            color: "var(--text-secondary)",
+          }}
+        >
+          new policy YAML
+          <textarea
+            value={yamlInput}
+            onChange={(e) => {
+              setYamlInput(e.target.value);
+              setValidatedRoot(null);
+            }}
+            rows={9}
+            placeholder={
+              "version: 1\nagent: " +
+              active.agent +
+              "\ncaps:\n  - token: USDC\n    max_per_tx: 10\n    max_per_day: 50\nrate_limit:\n  max_tx_per_minute: 6\n"
+            }
+            className="input"
+            style={{
+              marginTop: "0.25rem",
+              fontFamily: "var(--font-mono)",
+              fontSize: "0.78rem",
+              display: "block",
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          />
+        </label>
+
+        {validatedRoot && (
+          <div
+            style={{
+              marginTop: "0.5rem",
+              fontSize: "0.68rem",
+              color: "var(--accent-green)",
+              fontFamily: "var(--font-mono)",
+              wordBreak: "break-all",
+            }}
+          >
+            ✓ root: {validatedRoot}
+          </div>
+        )}
+
+        {updateError && (
+          <div
+            className="status-pill deny"
+            style={{
+              marginTop: "0.6rem",
+              fontSize: "0.72rem",
+              alignItems: "flex-start",
+            }}
+          >
+            <span className="pill-dot" style={{ flexShrink: 0, marginTop: "0.15rem" }} />
+            {updateError}
+          </div>
+        )}
+        {busyMsg && (
+          <div
+            className="status-pill info"
+            style={{ marginTop: "0.6rem", fontSize: "0.72rem" }}
+          >
+            <span className="pill-dot" />
+            {busyMsg}
+          </div>
+        )}
+
+        <div
+          style={{
+            marginTop: "1rem",
+            display: "flex",
+            gap: "0.5rem",
+            justifyContent: "flex-end",
+            flexWrap: "wrap",
+          }}
+        >
+          <button onClick={close} className="btn btn-ghost">
+            cancel
+          </button>
+          <button
+            onClick={validateRoot}
+            disabled={!yamlInput || !!busyMsg}
+            className="btn btn-ghost"
+          >
+            validate YAML
+          </button>
+          <button
+            onClick={approveAndUpdate}
+            disabled={!validatedRoot || !!busyMsg || !connected}
+            className="btn btn-primary"
+            title={!connected ? "connect Phantom first" : undefined}
+          >
+            sign &amp; broadcast
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
-
-// Styles moved to globals.css — modal-overlay, modal-card, input, btn, btn-primary, btn-ghost
