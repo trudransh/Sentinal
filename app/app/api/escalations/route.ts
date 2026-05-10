@@ -37,14 +37,10 @@ const PostBody = z.object({
 function authenticated(req: Request): boolean {
   const expected = process.env.SENTINEL_DASHBOARD_TOKEN;
   if (!expected) {
-    // Dev fallback only — explicit opt-in, never silent.
-    if (
-      process.env.NODE_ENV !== "production" &&
-      process.env.SENTINEL_ALLOW_UNAUTH_DASHBOARD === "1"
-    ) {
-      return true;
-    }
-    return false;
+    // No token configured: allow in dev, block in production.
+    // Set SENTINEL_DASHBOARD_TOKEN (+ NEXT_PUBLIC_SENTINEL_DASHBOARD_TOKEN)
+    // to the same value to enable auth everywhere.
+    return process.env.NODE_ENV !== "production";
   }
   const got = req.headers.get("x-sentinel-token");
   if (!got || got.length !== expected.length) return false;

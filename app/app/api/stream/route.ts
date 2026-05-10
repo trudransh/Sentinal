@@ -3,20 +3,60 @@ import { getDb, type PolicyEventRow } from "@/lib/db";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(): Promise<Response> {
+// SSE stream of recent policy events + pending escalation count.
+// Hard-stops after 10 minutes — clients reconnect transparently via the
+// browser EventSource retry semantics.
+const HARD_STOP_MS = 10 * 60_000;
+const TICK_MS = 1000;
+
+export async function GET(req: Request): Promise<Response> {
   const db = getDb();
+  let closed = false;
+  let interval: ReturnType<typeof setInterval> | undefined;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+
   const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
+    start(controller) {
       const enc = new TextEncoder();
-      const send = (event: string, data: unknown) => {
-        controller.enqueue(
-          enc.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
-        );
+
+      // Single guarded enqueue — if the underlying ReadableStream has been
+      // detached (client disconnect), `controller.enqueue` throws
+      // ERR_INVALID_STATE. Track that so the next tick stops trying.
+      const send = (event: string, data: unknown): void => {
+        if (closed) return;
+        try {
+          controller.enqueue(
+            enc.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+          );
+        } catch {
+          stop();
+        }
       };
+
+      const stop = (): void => {
+        if (closed) return;
+        closed = true;
+        if (interval) clearInterval(interval);
+        if (timeout) clearTimeout(timeout);
+        try {
+          controller.close();
+        } catch {
+          // already closed
+        }
+      };
+
+      // The browser closing the EventSource fires the abort signal — wire
+      // it to our cleanup so we don't keep ticking against a dead controller.
+      if (req.signal.aborted) {
+        stop();
+        return;
+      }
+      req.signal.addEventListener("abort", stop, { once: true });
 
       send("hello", { ts: Date.now() });
 
-      const tick = () => {
+      const tick = (): void => {
+        if (closed) return;
         try {
           const events = db
             .prepare(
@@ -28,26 +68,28 @@ export async function GET(): Promise<Response> {
             .all() as PolicyEventRow[];
           const pending = (
             db
-              .prepare(`SELECT COUNT(*) AS n FROM escalations WHERE status = 'pending'`)
+              .prepare(
+                `SELECT COUNT(*) AS n FROM escalations WHERE status = 'pending'`,
+              )
               .get() as { n: number }
           ).n;
           send("tick", { events, pending });
         } catch (err) {
-          send("error", { message: err instanceof Error ? err.message : String(err) });
+          send("error", {
+            message: err instanceof Error ? err.message : String(err),
+          });
         }
       };
 
       tick();
-      const interval = setInterval(tick, 1000);
-      const timeout = setTimeout(() => {
-        clearInterval(interval);
-        controller.close();
-      }, 10 * 60_000);
-
-      return () => {
-        clearInterval(interval);
-        clearTimeout(timeout);
-      };
+      interval = setInterval(tick, TICK_MS);
+      timeout = setTimeout(stop, HARD_STOP_MS);
+    },
+    cancel() {
+      // Client called reader.cancel() or otherwise tore down the stream.
+      closed = true;
+      if (interval) clearInterval(interval);
+      if (timeout) clearTimeout(timeout);
     },
   });
 
