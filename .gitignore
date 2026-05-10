@@ -1,28 +1,62 @@
+####################################
+# Sentinel — .gitignore
+####################################
+
+# --- Dependencies & build outputs ---
 node_modules/
 .pnpm-store/
-.DS_Store
-.env
-.env.local
-*.tsbuildinfo
 dist/
 .next/
 out/
+*.tsbuildinfo
+
+# --- Rust / Anchor build artefacts ---
 target/
 .anchor/
 test-ledger/
-*.log
+
+# --- Secrets & environment ---
+.env
+.env.local
+.env.production
+.colosseum.env
+
+# --- OS / editor junk ---
+.DS_Store
+Thumbs.db
 .idea/
 .vscode/
+*.swp
+*.swo
+
+# --- Logs ---
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# --- Dev-tooling artefacts (AI assistants, swarms) ---
+.claude/
+.claude-flow/
+.swarm/
+.agents/
+.mcp.json
+ruvector.db
+skills-lock.json
+
+# --- Runtime data directories ---
 .data/
+app/.data/
+app/.claude-flow/
+
+# --- Unreleased planning docs ---
 Implementation.md
 Plan.md
-.mcp.json
-.CHANGELOG.md
 SUBMISSION_PLAN.md
-docs/pitches
+docs/pitches/
 docs/submission-checklist.md
-.swarm
-.claude-flow/
-.claude/
-CHANGELOG.md
-.colosseum.env
+docs/eligibility-check.md
+
+# --- Sensitive probe captures (may contain API keys / wallet addrs) ---
+/tmp/sentinel-*.json
+/tmp/sentinel-*.log
+/tmp/sentinel-*.txt
