@@ -5,7 +5,14 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./squads-owner": {
+      "types": "./dist/squads-owner.d.ts",
+      "default": "./dist/squads-owner.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -19,6 +26,7 @@
     "@sentinel/policy-dsl": "workspace:*",
     "@solana/spl-token": "^0.4.0",
     "@solana/web3.js": "^1.95.0",
+    "@sqds/multisig": "^2.1.4",
     "better-sqlite3": "^11.5.0",
     "pino": "^9.0.0",
     "yaml": "^2.5.0",

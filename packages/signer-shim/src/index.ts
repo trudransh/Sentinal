@@ -23,3 +23,19 @@ export {
   createInMemoryRateLimiter,
 } from "./rate-limiter.js";
 export type { RateLimiter, RateLimiterOptions } from "./rate-limiter.js";
+export {
+  buildRegisterPolicyIx,
+  buildRegisterPolicyViaSquads,
+  buildSquadsBundle,
+  buildSquadsExecuteTx,
+  buildUpdatePolicyIx,
+  buildUpdatePolicyViaSquads,
+  fetchMultisigSnapshot,
+  findPolicyPda,
+  getSentinelVaultPda,
+} from "./squads-owner.js";
+export type {
+  BuildSquadsBundleOptions,
+  MultisigSnapshot,
+  SquadsTransactionBundle,
+} from "./squads-owner.js";
